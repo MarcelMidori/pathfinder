@@ -14,24 +14,12 @@
         <button class="secondary" onclick="resetProgress()">Reset Path</button>
         <button class="secondary" id="algoBtn" onclick="runDijkstraAnimation()">Visualize Dijkstra</button>
         <button class="secondary" id="raceBtn" onclick="toggleRaceMode()">Race Mode</button>
-        <div class="shortcuts-hint">
-            <kbd>N</kbd> New | <kbd>R</kbd> Reset | <kbd>D</kbd> Dijkstra
-        </div>
     </div>
 
     <div class="stats">
         <div class="stat-box">Target Distance: <span id="targetDist" class="val">?</span></div>
         <div class="stat-box">Your Distance: <span id="currentDist" class="val">0</span></div>
         <div class="stat-box">Status: <span id="statusMsg" style="color:#aaa">Select neighbors to move.</span></div>
-    </div>
-
-    <!-- Race result message -->
-    <div class="race-result" id="raceResult" style="display: none;">
-        <div class="race-result-content">
-            <h2 id="raceResultTitle"></h2>
-            <p id="raceResultMessage"></p>
-            <button class="new-race-btn" onclick="startNewRace()">New Race</button>
-        </div>
     </div>
 
     <!-- Race mode stats -->
@@ -53,7 +41,11 @@
                 <button class="difficulty-btn" data-difficulty="medium" onclick="setRaceDifficulty('medium')">Medium</button>
                 <button class="difficulty-btn" data-difficulty="hard" onclick="setRaceDifficulty('hard')">Hard</button>
             </div>
-            <button id="startRaceBtn" class="start-race-btn" onclick="startRaceFromButton()" style="margin-top: 15px; padding: 10px 20px; background: #4CAF50; border: none; color: white; border-radius: 4px; font-weight: bold; cursor: pointer;">Start Race</button>
+            <button id="startRaceBtn" class="start-race-btn" onclick="startRaceFromButton()">Start Race</button>
+        </div>
+        <div class="race-section" id="raceResultSection" style="display: none;">
+            <h3 id="raceResultTitle"></h3>
+            <p id="raceResultMessage" style="margin: 8px 0; color: #eee; font-size: 0.9rem;"></p>
         </div>
     </div>
 

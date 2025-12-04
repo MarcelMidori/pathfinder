@@ -48,7 +48,7 @@ let raceAlgoTimeEl = null;
 let raceCanvasSection = null;
 let canvasContainer = null;
 let startRaceBtn = null;
-let raceResultEl = null;
+let raceResultSection = null;
 let raceResultTitleEl = null;
 let raceResultMessageEl = null;
 
@@ -80,7 +80,7 @@ export function init() {
         raceCanvasSection = document.getElementById('raceCanvasSection');
         canvasContainer = document.getElementById('canvasContainer');
         startRaceBtn = document.getElementById('startRaceBtn');
-        raceResultEl = document.getElementById('raceResult');
+        raceResultSection = document.getElementById('raceResultSection');
         raceResultTitleEl = document.getElementById('raceResultTitle');
         raceResultMessageEl = document.getElementById('raceResultMessage');
 
@@ -322,8 +322,8 @@ function toggleRaceMode() {
             raceBtn.textContent = 'Race Mode';
             raceBtn.style.background = '#2196F3';
         }
-        if (raceResultEl) {
-            raceResultEl.style.display = 'none';
+        if (raceResultSection) {
+            raceResultSection.style.display = 'none';
         }
 
         raceGraphData = null;
@@ -359,9 +359,19 @@ function setRaceDifficulty(difficulty) {
 
 /**
  * Start race from button click - generates new graph and starts race
+ * Also handles "New Race" functionality when race is complete
  */
 function startRaceFromButton() {
-    if (!raceMode || raceStarted) return;
+    if (!raceMode) return;
+    
+    // If race is complete, start new race
+    if (raceStarted && raceAlgoComplete) {
+        startNewRace();
+        return;
+    }
+    
+    // If race already started, do nothing
+    if (raceStarted) return;
     
     // Disable start button
     if (startRaceBtn) {
@@ -469,7 +479,7 @@ async function startRace() {
 }
 
 /**
- * Check race result and show win/loss message
+ * Check race result and show win/loss message in race stats
  */
 function checkRaceResult() {
     if (!raceMode || !raceStarted || !raceAlgoComplete) return;
@@ -480,7 +490,7 @@ function checkRaceResult() {
     // Only show result if user has completed their path
     if (userPath[userPath.length - 1] !== graphData.endNode) return;
     
-    if (!raceResultEl || !raceResultTitleEl || !raceResultMessageEl) return;
+    if (!raceResultSection || !raceResultTitleEl || !raceResultMessageEl) return;
     
     // Determine winner
     let title = '';
@@ -506,7 +516,13 @@ function checkRaceResult() {
     raceResultTitleEl.textContent = title;
     raceResultTitleEl.style.color = titleColor;
     raceResultMessageEl.textContent = message;
-    raceResultEl.style.display = 'block';
+    raceResultSection.style.display = 'block';
+    
+    // Update button to "New Race"
+    if (startRaceBtn) {
+        startRaceBtn.disabled = false;
+        startRaceBtn.textContent = 'New Race';
+    }
 }
 
 /**
@@ -516,8 +532,8 @@ function startNewRace() {
     if (!raceMode) return;
     
     // Hide result
-    if (raceResultEl) {
-        raceResultEl.style.display = 'none';
+    if (raceResultSection) {
+        raceResultSection.style.display = 'none';
     }
     
     // Reset race state
