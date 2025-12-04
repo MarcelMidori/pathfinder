@@ -11,6 +11,7 @@ import { dijkstraAnimated, calculatePathWeight } from './algorithms.js';
 let graphData = null;
 let raceGraphData = null; // Duplicate graph for race mode
 let userPath = [];
+let userPathCosts = {}; // Map of node ID to cumulative cost in user path
 let optimalPath = []; // Store optimal path from Dijkstra
 let optimalDistance = null; // Store optimal distance
 let isAnimating = false;
@@ -27,10 +28,12 @@ let raceAlgoTime = null;
 let raceDifficulty = 'medium'; // 'easy', 'medium', 'hard'
 let raceAnimationHighlight = null;
 let raceAnimationVisited = [];
+let raceAnimationDistances = {}; // Store distances during race Dijkstra visualization
 
 // Animation state
 let animationHighlight = null;
 let animationVisited = [];
+let animationDistances = {}; // Store distances during Dijkstra visualization
 
 // DOM elements
 let canvas = null;
@@ -178,6 +181,8 @@ function handleNodeClick(nodeId) {
     // If clicked the last node, undo (unless it's start)
     if (nodeId === lastNodeId && userPath.length > 1) {
         userPath.pop();
+        // Recalculate costs after undo
+        calculateUserPathCosts();
         updateUI();
         render();
         return;
@@ -189,6 +194,8 @@ function handleNodeClick(nodeId) {
 
     if (isNeighbor && !userPath.includes(nodeId)) {
         userPath.push(nodeId);
+        // Calculate cumulative cost up to this node
+        calculateUserPathCosts();
         updateUI();
         render();
 
@@ -433,6 +440,8 @@ function generateRaceGraph() {
     
     // Reset user path
     userPath = [graphData.startNode];
+    userPathCosts = {};
+    calculateUserPathCosts();
     optimalPath = [];
     optimalDistance = null;
 
@@ -453,6 +462,8 @@ async function startRace() {
     raceAlgoTime = null;
     raceAnimationHighlight = null;
     raceAnimationVisited = [];
+    raceAnimationDistances = {};
+    userPathCosts = {};
 
     // Reset race UI
     if (raceUserDistEl) raceUserDistEl.textContent = '0';
@@ -471,6 +482,7 @@ async function startRace() {
     const onStep = (currentNode, visited, distances) => {
         raceAnimationHighlight = currentNode;
         raceAnimationVisited = visited;
+        raceAnimationDistances = distances; // Store distances for cost display
         renderRace();
     };
 
@@ -486,6 +498,7 @@ async function startRace() {
         // Clear animation state and show optimal path
         raceAnimationHighlight = null;
         raceAnimationVisited = [];
+        raceAnimationDistances = {};
         renderRace(result.path);
         
         // Check if user has completed their path and show result
@@ -606,11 +619,11 @@ function renderRace(optimalPath = null) {
     
     // If algorithm is complete, show optimal path
     if (raceAlgoComplete && optimalPath) {
-        raceRenderer.draw(raceGraphData, [], [], [], optimalPath);
+        raceRenderer.draw(raceGraphData, [], [], [], optimalPath, {}, {});
     } else {
         // Show animation state during algorithm execution
         const highlightNodes = raceAnimationHighlight !== null ? [raceAnimationHighlight] : [];
-        raceRenderer.draw(raceGraphData, [], highlightNodes, raceAnimationVisited, []);
+        raceRenderer.draw(raceGraphData, [], highlightNodes, raceAnimationVisited, [], {}, raceAnimationDistances);
     }
 }
 
@@ -632,6 +645,8 @@ function generateNewGraph() {
     });
 
     userPath = [graphData.startNode];
+    userPathCosts = {};
+    calculateUserPathCosts();
     optimalPath = [];
     optimalDistance = null;
     isAnimating = false;
@@ -648,6 +663,8 @@ function generateNewGraph() {
     if (raceMode && raceStarted) {
         raceGraphData = cloneGraphData(graphData);
         userPath = [graphData.startNode];
+        userPathCosts = {};
+        calculateUserPathCosts();
         raceStarted = false;
         raceAlgoComplete = false;
         if (startRaceBtn) {
@@ -662,11 +679,34 @@ function generateNewGraph() {
 }
 
 /**
+ * Calculate cumulative costs for user path nodes
+ */
+function calculateUserPathCosts() {
+    userPathCosts = {};
+    if (!graphData || userPath.length === 0) return;
+    
+    let cumulativeCost = 0;
+    userPathCosts[userPath[0]] = 0; // Start node has cost 0
+    
+    for (let i = 0; i < userPath.length - 1; i++) {
+        const currentNode = graphData.nodes[userPath[i]];
+        const nextNodeId = userPath[i + 1];
+        const neighbor = currentNode.neighbors.find(n => n.id === nextNodeId);
+        
+        if (neighbor) {
+            cumulativeCost += neighbor.weight;
+            userPathCosts[nextNodeId] = cumulativeCost;
+        }
+    }
+}
+
+/**
  * Reset user path to start
  */
 function resetUserPath() {
     if (isAnimating || !graphData) return;
     userPath = [graphData.startNode];
+    calculateUserPathCosts();
     updateUI();
     render();
 }
@@ -688,6 +728,7 @@ async function runDijkstraVisualization() {
     // Reset animation state
     animationHighlight = null;
     animationVisited = [];
+    animationDistances = {};
     optimalPath = [];
     optimalDistance = null;
 
@@ -695,6 +736,8 @@ async function runDijkstraVisualization() {
     const onStep = (currentNode, visited, distances) => {
         animationHighlight = currentNode;
         animationVisited = visited;
+        // Store distances for rendering
+        animationDistances = distances;
         render();
     };
 
@@ -739,6 +782,7 @@ async function runDijkstraVisualization() {
     // Final render without highlight
     animationHighlight = null;
     animationVisited = [];
+    animationDistances = {};
     render();
 }
 
@@ -786,6 +830,7 @@ function render() {
     let highlightNodes = [];
     let visitedNodes = [];
     let pathToShow = [];
+    let distances = {};
 
     // If we're animating, use current animation state
     if (isAnimating) {
@@ -793,6 +838,7 @@ function render() {
             highlightNodes = [animationHighlight];
         }
         visitedNodes = animationVisited;
+        distances = animationDistances; // Pass distances for cost display
     } else {
         // Show optimal path if available
         pathToShow = optimalPath;
@@ -803,7 +849,9 @@ function render() {
         userPath,
         highlightNodes,
         visitedNodes,
-        pathToShow
+        pathToShow,
+        userPathCosts,
+        distances
     );
 }
 

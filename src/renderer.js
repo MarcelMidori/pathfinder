@@ -117,18 +117,22 @@ export class Renderer {
      * @param {number} state.startNode - ID of start node
      * @param {number} state.endNode - ID of end node
      * @param {Array} state.userPath - Array of node IDs in user's path
+     * @param {Object} state.userPathCosts - Map of node ID to cumulative cost in user path
      * @param {Array} state.optimalPath - Array of node IDs in optimal path
      * @param {Array} state.visitedNodes - Array of visited node IDs
      * @param {Array} state.highlightNodes - Array of highlighted node IDs
+     * @param {Object} state.distances - Map of node ID to distance (for Dijkstra visualization)
      */
     drawNode(node, state = {}) {
         const {
             startNode = null,
             endNode = null,
             userPath = [],
+            userPathCosts = {},
             optimalPath = [],
             visitedNodes = [],
-            highlightNodes = []
+            highlightNodes = [],
+            distances = {}
         } = state;
 
         // Determine node color based on state (priority: start/end > optimal > highlight > visited > user path > default)
@@ -159,12 +163,23 @@ export class Renderer {
         this.ctx.lineWidth = NODE_STROKE_WIDTH;
         this.ctx.stroke();
 
-        // Draw node label (use letter label instead of numeric ID)
-        this.ctx.fillStyle = COLORS.TEXT;
-        this.ctx.font = `bold ${FONT_SIZE}px ${FONT_FAMILY}`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(node.label || node.id.toString(), node.x, node.y);
+        // Draw cost label (if available)
+        let costToDisplay = null;
+        
+        // Priority: user path cost > Dijkstra distance > nothing
+        if (userPathCosts[node.id] !== undefined) {
+            costToDisplay = userPathCosts[node.id];
+        } else if (distances[node.id] !== undefined && distances[node.id] !== Infinity) {
+            costToDisplay = distances[node.id];
+        }
+        
+        if (costToDisplay !== null) {
+            this.ctx.fillStyle = COLORS.TEXT;
+            this.ctx.font = `bold ${FONT_SIZE}px ${FONT_FAMILY}`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(costToDisplay.toString(), node.x, node.y);
+        }
     }
 
     /**
@@ -186,11 +201,13 @@ export class Renderer {
      * @param {number} graphData.startNode - Start node ID
      * @param {number} graphData.endNode - End node ID
      * @param {Array} userPath - User's current path (array of node IDs)
+     * @param {Object} userPathCosts - Map of node ID to cumulative cost in user path
      * @param {Array} highlightNodes - Nodes to highlight (for algorithm visualization)
      * @param {Array} visitedNodes - Nodes visited by algorithm
      * @param {Array} optimalPath - Optimal path found by algorithm
+     * @param {Object} distances - Map of node ID to distance (for Dijkstra visualization)
      */
-    draw(graphData, userPath = [], highlightNodes = [], visitedNodes = [], optimalPath = []) {
+    draw(graphData, userPath = [], highlightNodes = [], visitedNodes = [], optimalPath = [], userPathCosts = {}, distances = {}) {
         this.clear();
 
         const { nodes, edges, startNode, endNode } = graphData;
@@ -213,9 +230,11 @@ export class Renderer {
             startNode,
             endNode,
             userPath,
+            userPathCosts,
             optimalPath,
             visitedNodes,
-            highlightNodes
+            highlightNodes,
+            distances
         };
         this.drawNodes(nodes, state);
     }
