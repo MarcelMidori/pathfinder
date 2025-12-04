@@ -9,123 +9,154 @@
 
     <h1>Pathfinder: Graph Theory</h1>
     
-    <div class="controls">
-        <button onclick="generateGraph()">New Graph</button>
-        <button class="secondary" onclick="resetProgress()">Reset Path</button>
-        <button class="secondary" id="algoBtn" onclick="runDijkstraAnimation()">Visualize Dijkstra</button>
-        <button class="secondary" id="raceBtn" onclick="toggleRaceMode()">Race Mode</button>
-        <button class="secondary" id="algoRaceBtn" onclick="toggleAlgorithmRaceMode()">Algorithm Race</button>
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+        <button class="tab active" data-tab="explore" onclick="switchTab('explore')">Explore</button>
+        <button class="tab" data-tab="race" onclick="switchTab('race')">Race</button>
+        <button class="tab" data-tab="compare" onclick="switchTab('compare')">Compare</button>
     </div>
 
-    <div class="stats">
-        <div class="stat-box">Target Distance: <span id="targetDist" class="val">?</span></div>
-        <div class="stat-box">Your Distance: <span id="currentDist" class="val">0</span></div>
-        <div class="stat-box">Status: <span id="statusMsg" style="color:#aaa">Select neighbors to move.</span></div>
-    </div>
+    <!-- EXPLORE TAB PANEL -->
+    <div id="explorePanel" class="tab-panel active">
+        <div class="controls">
+            <button onclick="generateGraph()">New Graph</button>
+            <button class="secondary" onclick="resetProgress()">Reset Path</button>
+            <button class="secondary" id="algoBtn" onclick="runDijkstraAnimation()">Visualize Dijkstra</button>
+        </div>
 
-    <!-- Race mode stats -->
-    <div class="race-stats" id="raceStats" style="display: none;">
-        <div class="race-section">
-            <h3>You</h3>
-            <div class="stat-box">Distance: <span id="raceUserDist" class="val">0</span></div>
-            <div class="stat-box">Time: <span id="raceUserTime" class="val">0.0s</span></div>
+        <div class="stats">
+            <div class="stat-box">Target Distance: <span id="targetDist" class="val">?</span></div>
+            <div class="stat-box">Your Distance: <span id="currentDist" class="val">0</span></div>
+            <div class="stat-box">Status: <span id="statusMsg" style="color:#aaa">Select neighbors to move.</span></div>
         </div>
-        <div class="race-section">
-            <h3>Algorithm</h3>
-            <div class="stat-box">Distance: <span id="raceAlgoDist" class="val">?</span></div>
-            <div class="stat-box">Time: <span id="raceAlgoTime" class="val">?</span></div>
-        </div>
-        <div class="race-section">
-            <h3>Difficulty</h3>
-            <div class="difficulty-selector">
-                <button class="difficulty-btn active" data-difficulty="easy" onclick="setRaceDifficulty('easy')">Easy</button>
-                <button class="difficulty-btn" data-difficulty="medium" onclick="setRaceDifficulty('medium')">Medium</button>
-                <button class="difficulty-btn" data-difficulty="hard" onclick="setRaceDifficulty('hard')">Hard</button>
-            </div>
-            <button id="startRaceBtn" class="start-race-btn" onclick="startRaceFromButton()">Start Race</button>
-        </div>
-        <div class="race-section" id="raceResultSection" style="display: none;">
-            <h3 id="raceResultTitle"></h3>
-            <p id="raceResultMessage" style="margin: 8px 0; color: #eee; font-size: 0.9rem;"></p>
-        </div>
-    </div>
 
-    <!-- Algorithm race mode stats -->
-    <div class="race-stats" id="algoRaceStats" style="display: none;">
-        <div class="algo-race-controls">
-            <button id="startAlgoRaceBtn" class="start-race-btn" onclick="startAlgorithmRaceFromButton()">Start Race</button>
-            <div class="race-section" id="algoRaceResultSection" style="display: none;">
-                <h3 id="algoRaceResultTitle"></h3>
-                <p id="algoRaceResultMessage" style="margin: 8px 0; color: #eee; font-size: 0.9rem;"></p>
-            </div>
-        </div>
-        <div class="algo-grid-stats">
-            <div class="algo-stat-item">
-                <h4>Dijkstra</h4>
-                <div class="stat-box">Distance: <span id="algoDijkstraDist" class="val">?</span></div>
-                <div class="stat-box">Time: <span id="algoDijkstraTime" class="val">?</span></div>
-            </div>
-            <div class="algo-stat-item">
-                <h4>A*</h4>
-                <div class="stat-box">Distance: <span id="algoAstarDist" class="val">?</span></div>
-                <div class="stat-box">Time: <span id="algoAstarTime" class="val">?</span></div>
-            </div>
-            <div class="algo-stat-item">
-                <h4>BFS</h4>
-                <div class="stat-box">Distance: <span id="algoBfsDist" class="val">?</span></div>
-                <div class="stat-box">Time: <span id="algoBfsTime" class="val">?</span></div>
-            </div>
-            <div class="algo-stat-item">
-                <h4>DFS</h4>
-                <div class="stat-box">Distance: <span id="algoDfsDist" class="val">?</span></div>
-                <div class="stat-box">Time: <span id="algoDfsTime" class="val">?</span></div>
-            </div>
-            <div class="algo-stat-item">
-                <h4>Greedy</h4>
-                <div class="stat-box">Distance: <span id="algoGreedyDist" class="val">?</span></div>
-                <div class="stat-box">Time: <span id="algoGreedyTime" class="val">?</span></div>
-            </div>
-            <div class="algo-stat-item">
-                <h4>UCS</h4>
-                <div class="stat-box">Distance: <span id="algoUcsDist" class="val">?</span></div>
-                <div class="stat-box">Time: <span id="algoUcsTime" class="val">?</span></div>
+        <div class="canvas-container">
+            <div class="canvas-section">
+                <h3>Your Path</h3>
+                <canvas id="gameCanvas" width="800" height="500"></canvas>
             </div>
         </div>
     </div>
 
-    <br>
-    <div id="canvasContainer">
-        <div class="canvas-section">
-            <h3 id="userCanvasLabel">Your Path</h3>
-            <canvas id="gameCanvas" width="800" height="500"></canvas>
+    <!-- RACE TAB PANEL -->
+    <div id="racePanel" class="tab-panel">
+        <div class="race-stats">
+            <div class="race-section">
+                <h3>You</h3>
+                <div class="stat-box">Distance: <span id="raceUserDist" class="val">0</span></div>
+                <div class="stat-box">Time: <span id="raceUserTime" class="val">0.0s</span></div>
+            </div>
+            <div class="race-section">
+                <h3>Algorithm</h3>
+                <div class="stat-box">Distance: <span id="raceAlgoDist" class="val">?</span></div>
+                <div class="stat-box">Time: <span id="raceAlgoTime" class="val">?</span></div>
+            </div>
+            <div class="race-section">
+                <h3>Settings</h3>
+                <label class="race-label">Algorithm:</label>
+                <select id="raceAlgoSelect" class="algo-select" onchange="setRaceAlgorithm(this.value)">
+                    <option value="dijkstra">Dijkstra</option>
+                    <option value="astar">A*</option>
+                    <option value="bfs">BFS</option>
+                    <option value="dfs">DFS</option>
+                    <option value="greedy">Greedy</option>
+                    <option value="ucs">UCS</option>
+                </select>
+                <label class="race-label">Difficulty:</label>
+                <div class="difficulty-selector">
+                    <button class="difficulty-btn active" data-difficulty="easy" onclick="setRaceDifficulty('easy')">Easy</button>
+                    <button class="difficulty-btn" data-difficulty="medium" onclick="setRaceDifficulty('medium')">Medium</button>
+                    <button class="difficulty-btn" data-difficulty="hard" onclick="setRaceDifficulty('hard')">Hard</button>
+                </div>
+                <button id="startRaceBtn" class="start-race-btn" onclick="startRaceFromButton()">Start Race</button>
+            </div>
+            <div class="race-section" id="raceResultSection" style="display: none;">
+                <h3 id="raceResultTitle"></h3>
+                <p id="raceResultMessage" style="margin: 8px 0; color: #eee; font-size: 0.9rem;"></p>
+            </div>
         </div>
-        <div class="canvas-section" id="raceCanvasSection" style="display: none;">
-            <h3>Algorithm</h3>
-            <canvas id="raceCanvas" width="800" height="500"></canvas>
+
+        <div id="raceCanvasContainer" class="canvas-container race-mode">
+            <div class="canvas-section">
+                <h3>Your Path</h3>
+                <canvas id="raceUserCanvas" width="800" height="500"></canvas>
+            </div>
+            <div class="canvas-section">
+                <h3 id="raceAlgoLabel">Algorithm</h3>
+                <canvas id="raceCanvas" width="800" height="500"></canvas>
+            </div>
         </div>
-        <div class="canvas-section" id="algoDijkstraSection" style="display: none;">
-            <h3>Dijkstra</h3>
-            <canvas id="algoDijkstraCanvas" width="400" height="300"></canvas>
+    </div>
+
+    <!-- COMPARE TAB PANEL -->
+    <div id="comparePanel" class="tab-panel">
+        <div class="race-stats">
+            <div class="algo-race-controls">
+                <button id="startAlgoRaceBtn" class="start-race-btn" onclick="startAlgorithmRaceFromButton()">Start Race</button>
+                <div class="race-section" id="algoRaceResultSection" style="display: none;">
+                    <h3 id="algoRaceResultTitle"></h3>
+                    <p id="algoRaceResultMessage" style="margin: 8px 0; color: #eee; font-size: 0.9rem;"></p>
+                </div>
+            </div>
+            <div class="algo-grid-stats">
+                <div class="algo-stat-item">
+                    <h4>Dijkstra</h4>
+                    <div class="stat-box">Distance: <span id="algoDijkstraDist" class="val">?</span></div>
+                    <div class="stat-box">Time: <span id="algoDijkstraTime" class="val">?</span></div>
+                </div>
+                <div class="algo-stat-item">
+                    <h4>A*</h4>
+                    <div class="stat-box">Distance: <span id="algoAstarDist" class="val">?</span></div>
+                    <div class="stat-box">Time: <span id="algoAstarTime" class="val">?</span></div>
+                </div>
+                <div class="algo-stat-item">
+                    <h4>BFS</h4>
+                    <div class="stat-box">Distance: <span id="algoBfsDist" class="val">?</span></div>
+                    <div class="stat-box">Time: <span id="algoBfsTime" class="val">?</span></div>
+                </div>
+                <div class="algo-stat-item">
+                    <h4>DFS</h4>
+                    <div class="stat-box">Distance: <span id="algoDfsDist" class="val">?</span></div>
+                    <div class="stat-box">Time: <span id="algoDfsTime" class="val">?</span></div>
+                </div>
+                <div class="algo-stat-item">
+                    <h4>Greedy</h4>
+                    <div class="stat-box">Distance: <span id="algoGreedyDist" class="val">?</span></div>
+                    <div class="stat-box">Time: <span id="algoGreedyTime" class="val">?</span></div>
+                </div>
+                <div class="algo-stat-item">
+                    <h4>UCS</h4>
+                    <div class="stat-box">Distance: <span id="algoUcsDist" class="val">?</span></div>
+                    <div class="stat-box">Time: <span id="algoUcsTime" class="val">?</span></div>
+                </div>
+            </div>
         </div>
-        <div class="canvas-section" id="algoAstarSection" style="display: none;">
-            <h3>A*</h3>
-            <canvas id="algoAstarCanvas" width="400" height="300"></canvas>
-        </div>
-        <div class="canvas-section" id="algoBfsSection" style="display: none;">
-            <h3>BFS</h3>
-            <canvas id="algoBfsCanvas" width="400" height="300"></canvas>
-        </div>
-        <div class="canvas-section" id="algoDfsSection" style="display: none;">
-            <h3>DFS</h3>
-            <canvas id="algoDfsCanvas" width="400" height="300"></canvas>
-        </div>
-        <div class="canvas-section" id="algoGreedySection" style="display: none;">
-            <h3>Greedy</h3>
-            <canvas id="algoGreedyCanvas" width="400" height="300"></canvas>
-        </div>
-        <div class="canvas-section" id="algoUcsSection" style="display: none;">
-            <h3>UCS</h3>
-            <canvas id="algoUcsCanvas" width="400" height="300"></canvas>
+
+        <div id="compareCanvasContainer" class="canvas-container algo-race-mode">
+            <div class="canvas-section" id="algoDijkstraSection">
+                <h3>Dijkstra</h3>
+                <canvas id="algoDijkstraCanvas" width="400" height="300"></canvas>
+            </div>
+            <div class="canvas-section" id="algoAstarSection">
+                <h3>A*</h3>
+                <canvas id="algoAstarCanvas" width="400" height="300"></canvas>
+            </div>
+            <div class="canvas-section" id="algoBfsSection">
+                <h3>BFS</h3>
+                <canvas id="algoBfsCanvas" width="400" height="300"></canvas>
+            </div>
+            <div class="canvas-section" id="algoDfsSection">
+                <h3>DFS</h3>
+                <canvas id="algoDfsCanvas" width="400" height="300"></canvas>
+            </div>
+            <div class="canvas-section" id="algoGreedySection">
+                <h3>Greedy</h3>
+                <canvas id="algoGreedyCanvas" width="400" height="300"></canvas>
+            </div>
+            <div class="canvas-section" id="algoUcsSection">
+                <h3>UCS</h3>
+                <canvas id="algoUcsCanvas" width="400" height="300"></canvas>
+            </div>
         </div>
     </div>
 

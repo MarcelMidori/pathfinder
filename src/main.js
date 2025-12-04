@@ -15,6 +15,9 @@ import {
     calculatePathWeight 
 } from './algorithms.js';
 
+// Tab state
+let activeTab = 'explore'; // 'explore', 'race', 'compare'
+
 // Game state
 let graphData = null;
 let raceGraphData = null; // Duplicate graph for race mode
@@ -24,7 +27,8 @@ let optimalPath = []; // Store optimal path from Dijkstra
 let optimalDistance = null; // Store optimal distance
 let isAnimating = false;
 let renderer = null;
-let raceRenderer = null; // Renderer for race mode canvas
+let raceUserRenderer = null; // Renderer for race user canvas
+let raceRenderer = null; // Renderer for race algorithm canvas
 let algoDijkstraRenderer = null;
 let algoAstarRenderer = null;
 let algoBfsRenderer = null;
@@ -33,20 +37,19 @@ let algoGreedyRenderer = null;
 let algoUcsRenderer = null;
 
 // Race mode state
-let raceMode = false;
 let raceStarted = false; // Whether race has been started
 let raceStartTime = null;
 let raceAlgoComplete = false;
 let raceAlgoDistance = null;
 let raceAlgoTime = null;
-let raceDifficulty = 'medium'; // 'easy', 'medium', 'hard'
+let raceDifficulty = 'easy'; // 'easy', 'medium', 'hard'
+let raceAlgorithm = 'dijkstra'; // Selected algorithm for race
 let raceAnimationHighlight = null;
 let raceAnimationVisited = [];
-let raceAnimationDistances = {}; // Store distances during race Dijkstra visualization
+let raceAnimationDistances = {}; // Store distances during race algorithm visualization
 let raceFinalDistances = {};     // Store final distances after race algorithm completes
 
-// Algorithm race mode state
-let algoRaceMode = false;
+// Algorithm race mode (Compare tab) state
 let algoRaceStarted = false;
 let algoRaceGraphData = null;
 const algoResults = {
@@ -66,25 +69,21 @@ let finalDistances = {}; // Store final distances after algorithm completes
 
 // DOM elements
 let canvas = null;
+let raceUserCanvas = null;
 let raceCanvas = null;
 let algoBtn = null;
-let raceBtn = null;
 let targetDistEl = null;
 let currentDistEl = null;
 let statusMsgEl = null;
-let raceStatsEl = null;
 let raceUserDistEl = null;
 let raceUserTimeEl = null;
 let raceAlgoDistEl = null;
 let raceAlgoTimeEl = null;
-let raceCanvasSection = null;
-let canvasContainer = null;
 let startRaceBtn = null;
 let raceResultSection = null;
 let raceResultTitleEl = null;
 let raceResultMessageEl = null;
-let algoRaceBtn = null;
-let algoRaceStatsEl = null;
+let raceAlgoLabelEl = null;
 let startAlgoRaceBtn = null;
 let algoRaceResultSection = null;
 let algoRaceResultTitleEl = null;
@@ -105,27 +104,27 @@ const ALGO_RACE_SPEED = 100;
  */
 export function init() {
     try {
-        // Get DOM elements
+        // Get DOM elements - Explore tab
         canvas = document.getElementById('gameCanvas');
-        raceCanvas = document.getElementById('raceCanvas');
         algoBtn = document.getElementById('algoBtn');
-        raceBtn = document.getElementById('raceBtn');
         targetDistEl = document.getElementById('targetDist');
         currentDistEl = document.getElementById('currentDist');
         statusMsgEl = document.getElementById('statusMsg');
-        raceStatsEl = document.getElementById('raceStats');
+        
+        // Get DOM elements - Race tab
+        raceUserCanvas = document.getElementById('raceUserCanvas');
+        raceCanvas = document.getElementById('raceCanvas');
         raceUserDistEl = document.getElementById('raceUserDist');
         raceUserTimeEl = document.getElementById('raceUserTime');
         raceAlgoDistEl = document.getElementById('raceAlgoDist');
         raceAlgoTimeEl = document.getElementById('raceAlgoTime');
-        raceCanvasSection = document.getElementById('raceCanvasSection');
-        canvasContainer = document.getElementById('canvasContainer');
         startRaceBtn = document.getElementById('startRaceBtn');
         raceResultSection = document.getElementById('raceResultSection');
         raceResultTitleEl = document.getElementById('raceResultTitle');
         raceResultMessageEl = document.getElementById('raceResultMessage');
-        algoRaceBtn = document.getElementById('algoRaceBtn');
-        algoRaceStatsEl = document.getElementById('algoRaceStats');
+        raceAlgoLabelEl = document.getElementById('raceAlgoLabel');
+        
+        // Get DOM elements - Compare tab
         startAlgoRaceBtn = document.getElementById('startAlgoRaceBtn');
         algoRaceResultSection = document.getElementById('algoRaceResultSection');
         algoRaceResultTitleEl = document.getElementById('algoRaceResultTitle');
@@ -145,9 +144,8 @@ export function init() {
 
         // Initialize renderers
         renderer = new Renderer(canvas);
-        if (raceCanvas) {
-            raceRenderer = new Renderer(raceCanvas);
-        }
+        if (raceUserCanvas) raceUserRenderer = new Renderer(raceUserCanvas);
+        if (raceCanvas) raceRenderer = new Renderer(raceCanvas);
         if (algoDijkstraCanvas) algoDijkstraRenderer = new Renderer(algoDijkstraCanvas);
         if (algoAstarCanvas) algoAstarRenderer = new Renderer(algoAstarCanvas);
         if (algoBfsCanvas) algoBfsRenderer = new Renderer(algoBfsCanvas);
@@ -158,8 +156,15 @@ export function init() {
         // Set up event listeners
         setupEventListeners();
 
-        // Generate initial graph
+        // Generate initial graph for explore tab
         generateNewGraph();
+        
+        // Initialize race tab canvases (black)
+        if (raceUserRenderer) raceUserRenderer.clear();
+        if (raceRenderer) raceRenderer.clear();
+        
+        // Initialize compare tab canvases (black)
+        renderAlgorithmRace();
     } catch (error) {
         console.error('Error in init():', error);
         if (statusMsgEl) {
@@ -173,41 +178,280 @@ export function init() {
  * Set up event listeners
  */
 function setupEventListeners() {
-    // Canvas click handler
+    // Canvas click handlers for explore and race tabs
     canvas.addEventListener('mousedown', handleCanvasClick);
+    if (raceUserCanvas) {
+        raceUserCanvas.addEventListener('mousedown', handleRaceCanvasClick);
+    }
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         if (isAnimating) return;
         
         // Don't trigger shortcuts when typing in input fields
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
             return;
         }
 
         switch (e.key.toLowerCase()) {
             case 'n':
-                generateNewGraph();
+                if (activeTab === 'explore') generateNewGraph();
                 break;
             case 'r':
-                resetUserPath();
+                if (activeTab === 'explore') resetUserPath();
                 break;
             case 'd':
-                runDijkstraVisualization();
+                if (activeTab === 'explore') runDijkstraVisualization();
                 break;
         }
     });
 
     // Make functions available globally for onclick handlers
+    window.switchTab = switchTab;
     window.generateGraph = generateNewGraph;
     window.resetProgress = resetUserPath;
     window.runDijkstraAnimation = runDijkstraVisualization;
-    window.toggleRaceMode = toggleRaceMode;
     window.setRaceDifficulty = setRaceDifficulty;
+    window.setRaceAlgorithm = setRaceAlgorithm;
     window.startRaceFromButton = startRaceFromButton;
-    window.startNewRace = startNewRace;
-    window.toggleAlgorithmRaceMode = toggleAlgorithmRaceMode;
     window.startAlgorithmRaceFromButton = startAlgorithmRaceFromButton;
+}
+
+/**
+ * Switch between tabs
+ */
+function switchTab(tabName) {
+    if (activeTab === tabName) return;
+    
+    // Update active tab
+    activeTab = tabName;
+    
+    // Update tab button states
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(tab => {
+        if (tab.dataset.tab === tabName) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // Update panel visibility
+    const panels = document.querySelectorAll('.tab-panel');
+    panels.forEach(panel => {
+        panel.classList.remove('active');
+    });
+    
+    const activePanel = document.getElementById(tabName + 'Panel');
+    if (activePanel) {
+        activePanel.classList.add('active');
+    }
+    
+    // Reset state when switching tabs
+    if (tabName === 'explore') {
+        // Generate new graph if none exists
+        if (!graphData) {
+            generateNewGraph();
+        }
+    } else if (tabName === 'race') {
+        // Reset race state
+        resetRaceState();
+    } else if (tabName === 'compare') {
+        // Reset algorithm race state
+        resetAlgoRaceState();
+    }
+}
+
+/**
+ * Reset race state for Race tab
+ */
+function resetRaceState() {
+    raceStarted = false;
+    raceGraphData = null;
+    raceStartTime = null;
+    raceAlgoComplete = false;
+    raceAlgoDistance = null;
+    raceAlgoTime = null;
+    raceAnimationHighlight = null;
+    raceAnimationVisited = [];
+    raceAnimationDistances = {};
+    raceFinalDistances = {};
+    userPath = [];
+    userPathCosts = {};
+    
+    // Reset UI
+    if (raceUserDistEl) raceUserDistEl.textContent = '0';
+    if (raceUserTimeEl) raceUserTimeEl.textContent = '0.0s';
+    if (raceAlgoDistEl) raceAlgoDistEl.textContent = '?';
+    if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = '?';
+    if (startRaceBtn) {
+        startRaceBtn.disabled = false;
+        startRaceBtn.textContent = 'Start Race';
+    }
+    if (raceResultSection) {
+        raceResultSection.style.display = 'none';
+    }
+    
+    // Clear canvases
+    if (raceUserRenderer) raceUserRenderer.clear();
+    if (raceRenderer) raceRenderer.clear();
+}
+
+/**
+ * Reset algorithm race state for Compare tab
+ */
+function resetAlgoRaceState() {
+    algoRaceStarted = false;
+    algoRaceGraphData = null;
+    
+    Object.keys(algoResults).forEach(key => {
+        algoResults[key] = {
+            result: null,
+            startTime: null,
+            complete: false,
+            highlight: null,
+            visited: [],
+            distances: {},
+            finalDistances: {}
+        };
+    });
+    
+    // Reset UI
+    const algoNames = ['Dijkstra', 'Astar', 'Bfs', 'Dfs', 'Greedy', 'Ucs'];
+    algoNames.forEach(name => {
+        const distEl = document.getElementById(`algo${name}Dist`);
+        const timeEl = document.getElementById(`algo${name}Time`);
+        if (distEl) distEl.textContent = '?';
+        if (timeEl) timeEl.textContent = '?';
+    });
+    
+    if (startAlgoRaceBtn) {
+        startAlgoRaceBtn.disabled = false;
+        startAlgoRaceBtn.textContent = 'Start Race';
+    }
+    if (algoRaceResultSection) {
+        algoRaceResultSection.style.display = 'none';
+    }
+    
+    // Clear canvases
+    renderAlgorithmRace();
+}
+
+/**
+ * Set race algorithm
+ */
+function setRaceAlgorithm(algoName) {
+    raceAlgorithm = algoName;
+    
+    // Update label if available
+    if (raceAlgoLabelEl) {
+        raceAlgoLabelEl.textContent = getAlgorithmName(algoName);
+    }
+}
+
+/**
+ * Handle race canvas click events (for Race tab user canvas)
+ */
+function handleRaceCanvasClick(e) {
+    if (isAnimating || !raceGraphData || !raceStarted) return;
+    
+    const rect = raceUserCanvas.getBoundingClientRect();
+    const scaleX = raceUserCanvas.width / rect.width;
+    const scaleY = raceUserCanvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    // Find clicked node
+    const clickedNode = raceGraphData.nodes.find(node => {
+        const dx = node.x - x;
+        const dy = node.y - y;
+        return Math.sqrt(dx * dx + dy * dy) < 20;
+    });
+    
+    if (!clickedNode) return;
+    
+    // Check if this is the first click (start path) or a valid neighbor
+    if (userPath.length === 0) {
+        // Must start at start node
+        if (clickedNode.id === raceGraphData.startNode) {
+            userPath = [clickedNode.id];
+            calculateUserPathCostsForRace();
+            renderRaceUser();
+            updateRaceUserStats();
+        }
+    } else {
+        const currentNode = userPath[userPath.length - 1];
+        const currentNodeObj = raceGraphData.nodes[currentNode];
+        
+        // Check if clicked node is a neighbor
+        const isNeighbor = currentNodeObj.neighbors.some(n => n.id === clickedNode.id);
+        
+        if (isNeighbor) {
+            // Check if going back (clicked the previous node)
+            if (userPath.length > 1 && userPath[userPath.length - 2] === clickedNode.id) {
+                userPath.pop();
+            } else if (!userPath.includes(clickedNode.id)) {
+                // Add new node to path
+                userPath.push(clickedNode.id);
+            }
+            
+            calculateUserPathCostsForRace();
+            renderRaceUser();
+            updateRaceUserStats();
+            
+            // Check if user reached end
+            if (clickedNode.id === raceGraphData.endNode) {
+                checkRaceResult();
+            }
+        }
+    }
+}
+
+/**
+ * Calculate user path costs for race mode
+ */
+function calculateUserPathCostsForRace() {
+    userPathCosts = {};
+    if (!raceGraphData || userPath.length === 0) return;
+    
+    let cumulative = 0;
+    userPathCosts[userPath[0]] = 0;
+    
+    for (let i = 1; i < userPath.length; i++) {
+        const prevNode = raceGraphData.nodes[userPath[i - 1]];
+        const edge = prevNode.neighbors.find(n => n.id === userPath[i]);
+        if (edge) {
+            cumulative += edge.weight;
+        }
+        userPathCosts[userPath[i]] = cumulative;
+    }
+}
+
+/**
+ * Update race user stats display
+ */
+function updateRaceUserStats() {
+    if (!raceGraphData || userPath.length === 0) return;
+    
+    const distance = calculatePathWeight(userPath, raceGraphData.nodes);
+    const time = raceStartTime ? ((Date.now() - raceStartTime) / 1000).toFixed(1) : '0.0';
+    
+    if (raceUserDistEl) raceUserDistEl.textContent = distance;
+    if (raceUserTimeEl) raceUserTimeEl.textContent = time + 's';
+}
+
+/**
+ * Render race user canvas
+ */
+function renderRaceUser() {
+    if (!raceUserRenderer) return;
+    
+    if (!raceStarted || !raceGraphData) {
+        raceUserRenderer.clear();
+        return;
+    }
+    
+    raceUserRenderer.draw(raceGraphData, userPath, [], [], [], userPathCosts, {});
 }
 
 /**
@@ -216,7 +460,7 @@ function setupEventListeners() {
 function handleCanvasClick(e) {
     if (isAnimating || !graphData) return;
     
-    // Only handle clicks on the user canvas, not race canvas
+    // Only handle clicks in explore tab
     if (e.target !== canvas) return;
 
     const rect = canvas.getBoundingClientRect();
@@ -310,100 +554,7 @@ function cloneGraphData(graphData) {
     };
 }
 
-/**
- * Toggle race mode on/off
- */
-function toggleRaceMode() {
-    raceMode = !raceMode;
-
-    if (raceMode) {
-        // Enable race mode
-        if (raceCanvasSection) {
-            raceCanvasSection.style.display = 'block';
-        }
-        if (raceStatsEl) {
-            raceStatsEl.style.display = 'flex';
-        }
-        if (canvasContainer) {
-            canvasContainer.classList.add('race-mode');
-        }
-        if (raceBtn) {
-            raceBtn.textContent = 'Exit Race Mode';
-            raceBtn.style.background = '#F44336';
-        }
-
-        // Initialize difficulty selector
-        const difficultyBtns = document.querySelectorAll('.difficulty-btn');
-        difficultyBtns.forEach(btn => {
-            if (btn.dataset.difficulty === raceDifficulty) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-
-        // Reset race state - don't start automatically
-        raceStarted = false;
-        raceGraphData = null;
-        graphData = null; // Clear graph data so both canvases are black
-        raceStartTime = null;
-        raceAlgoComplete = false;
-        raceAlgoDistance = null;
-        raceAlgoTime = null;
-        raceAnimationHighlight = null;
-        raceAnimationVisited = [];
-        raceAnimationDistances = {};
-        raceFinalDistances = {};
-        userPath = [];
-        userPathCosts = {};
-
-        // Reset UI
-        if (raceUserDistEl) raceUserDistEl.textContent = '0';
-        if (raceUserTimeEl) raceUserTimeEl.textContent = '0.0s';
-        if (raceAlgoDistEl) raceAlgoDistEl.textContent = '?';
-        if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = '?';
-        if (startRaceBtn) {
-            startRaceBtn.disabled = false;
-            startRaceBtn.textContent = 'Start Race';
-        }
-        if (raceResultSection) {
-            raceResultSection.style.display = 'none';
-        }
-
-        // Show black canvas (no graph yet) on both canvases
-        render();
-        if (raceRenderer) {
-            renderRace();
-        }
-    } else {
-        // Disable race mode
-        if (raceCanvasSection) {
-            raceCanvasSection.style.display = 'none';
-        }
-        if (raceStatsEl) {
-            raceStatsEl.style.display = 'none';
-        }
-        if (canvasContainer) {
-            canvasContainer.classList.remove('race-mode');
-        }
-        if (raceBtn) {
-            raceBtn.textContent = 'Race Mode';
-            raceBtn.style.background = '#2196F3';
-        }
-        if (raceResultSection) {
-            raceResultSection.style.display = 'none';
-        }
-
-        raceGraphData = null;
-        raceStartTime = null;
-        raceAlgoComplete = false;
-    }
-
-    render();
-    if (raceMode && raceRenderer) {
-        renderRace();
-    }
-}
+// toggleRaceMode removed - now handled by switchTab
 
 /**
  * Set race difficulty
@@ -427,11 +578,11 @@ function setRaceDifficulty(difficulty) {
  * Also handles "New Race" functionality when race is complete
  */
 function startRaceFromButton() {
-    if (!raceMode) return;
+    if (activeTab !== 'race') return;
     
     // If race is complete, start new race
     if (raceStarted && raceAlgoComplete) {
-        startNewRace();
+        resetRaceState();
         return;
     }
 
@@ -451,29 +602,23 @@ function startRaceFromButton() {
  * Generate new graph for race mode
  */
 function generateRaceGraph() {
-    if (!raceMode) return;
+    if (activeTab !== 'race') return;
     
-    // Show loading message
-    if (statusMsgEl) {
-        statusMsgEl.innerText = "Generating race graph...";
-        statusMsgEl.style.color = "#aaa";
-    }
-
-    // Generate new graph
-    graphData = generateGraph({
+    // Generate new graph using race canvas dimensions
+    const canvasWidth = raceUserCanvas ? raceUserCanvas.width : 800;
+    const canvasHeight = raceUserCanvas ? raceUserCanvas.height : 500;
+    
+    raceGraphData = generateGraph({
         nodeCount: DEFAULT_NODE_COUNT,
         connectivityRadius: DEFAULT_CONNECTIVITY_RADIUS,
-        canvasWidth: canvas.width,
-        canvasHeight: canvas.height
+        canvasWidth: canvasWidth,
+        canvasHeight: canvasHeight
     });
-
-    // Clone for race canvas
-    raceGraphData = cloneGraphData(graphData);
     
     // Reset user path
-    userPath = [graphData.startNode];
+    userPath = [raceGraphData.startNode];
     userPathCosts = {};
-    calculateUserPathCosts();
+    calculateUserPathCostsForRace();
     optimalPath = [];
     optimalDistance = null;
 
@@ -486,7 +631,7 @@ function generateRaceGraph() {
  * Start race mode - run algorithm automatically with visualization
  */
 async function startRace() {
-    if (!raceMode || !raceGraphData || !raceStarted) return;
+    if (activeTab !== 'race' || !raceGraphData || !raceStarted) return;
 
     raceStartTime = Date.now();
     raceAlgoComplete = false;
@@ -496,7 +641,6 @@ async function startRace() {
     raceAnimationVisited = [];
     raceAnimationDistances = {};
     raceFinalDistances = {};
-    userPathCosts = {};
 
     // Reset race UI
     if (raceUserDistEl) raceUserDistEl.textContent = '0';
@@ -505,18 +649,17 @@ async function startRace() {
     if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = '?';
 
     // Render both canvases with new graph
-    // Note: render() will show the graph on user canvas, renderRace() will show on algorithm canvas
-    render();
+    renderRaceUser();
     renderRace();
 
     // Get speed based on difficulty
     const speed = RACE_SPEEDS[raceDifficulty] || RACE_SPEEDS.medium;
 
-    // Run Dijkstra on race canvas with visualization
+    // Run selected algorithm on race canvas with visualization
     const onStep = (currentNode, visited, distances) => {
         raceAnimationHighlight = currentNode;
         raceAnimationVisited = visited;
-        raceAnimationDistances = distances; // Store distances for cost display
+        raceAnimationDistances = distances;
         renderRace();
     };
 
@@ -535,14 +678,16 @@ async function startRace() {
         // Clear animation highlight but keep distances
         raceAnimationHighlight = null;
         raceAnimationVisited = [];
-        // Keep raceAnimationDistances for final display
         renderRace(result.path);
         
         // Check if user has completed their path and show result
         checkRaceResult();
     };
 
-    await dijkstraAnimated(
+    // Get the algorithm function based on selection
+    const algoFunction = getAlgorithmFunction(raceAlgorithm);
+    
+    await algoFunction(
         raceGraphData.nodes,
         raceGraphData.startNode,
         raceGraphData.endNode,
@@ -558,14 +703,14 @@ async function startRace() {
 function checkRaceResult() {
     if (!raceAlgoComplete) return;
     
-    const userDistance = calculatePathWeight(userPath, graphData.nodes);
+    const userDistance = calculatePathWeight(userPath, raceGraphData.nodes);
     const userTime = raceStartTime ? ((Date.now() - raceStartTime) / 1000).toFixed(1) : '0.0';
     
     if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
     if (raceUserTimeEl) raceUserTimeEl.textContent = userTime + 's';
     
     // Only show result if user has completed path
-    if (userPath.length > 0 && userPath[userPath.length - 1] === graphData.endNode) {
+    if (userPath.length > 0 && userPath[userPath.length - 1] === raceGraphData.endNode) {
         if (raceResultSection) {
             raceResultSection.style.display = 'block';
         }
@@ -595,55 +740,13 @@ function checkRaceResult() {
     }
 }
 
-/**
- * Start a new race
- */
-function startNewRace() {
-    if (!raceMode) return;
-    
-    // Hide result
-    if (raceResultSection) {
-        raceResultSection.style.display = 'none';
-    }
-    
-    // Reset race state
-    raceStarted = false;
-    raceGraphData = null;
-    graphData = null;
-    userPath = [];
-    raceStartTime = null;
-    raceAlgoComplete = false;
-    raceAlgoDistance = null;
-    raceAlgoTime = null;
-    raceAnimationHighlight = null;
-    raceAnimationVisited = [];
-    raceAnimationDistances = {};
-    raceFinalDistances = {};
-    
-    // Reset UI
-    if (raceUserDistEl) raceUserDistEl.textContent = '0';
-    if (raceUserTimeEl) raceUserTimeEl.textContent = '0.0s';
-    if (raceAlgoDistEl) raceAlgoDistEl.textContent = '?';
-    if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = '?';
-    if (startRaceBtn) {
-        startRaceBtn.disabled = false;
-        startRaceBtn.textContent = 'Start Race';
-    }
-    if (statusMsgEl) {
-        statusMsgEl.innerText = 'Select difficulty and click Start Race';
-        statusMsgEl.style.color = '#aaa';
-    }
-    
-    // Show black canvases
-    render();
-    renderRace();
-}
+// startNewRace removed - now using resetRaceState
 
 /**
- * Render race canvas with animation state
+ * Render race algorithm canvas with animation state
  */
 function renderRace(optimalPath = null) {
-    if (!raceMode || !raceRenderer) return;
+    if (activeTab !== 'race' || !raceRenderer) return;
     
     // If race hasn't started, show black canvas
     if (!raceStarted || !raceGraphData) {
@@ -664,11 +767,11 @@ function renderRace(optimalPath = null) {
 }
 
 /**
- * Generate a new graph
+ * Generate a new graph (for Explore tab)
  */
 function generateNewGraph() {
-    // Don't generate graph if in race mode (race mode has its own graph generation)
-    if (raceMode) {
+    // Only generate graph for explore tab
+    if (activeTab !== 'explore') {
         return;
     }
     
@@ -706,7 +809,7 @@ function generateNewGraph() {
 }
 
 /**
- * Update UI elements
+ * Update UI elements (for Explore tab)
  */
 function updateUI() {
     if (!graphData) return;
@@ -718,20 +821,6 @@ function updateUI() {
 
     if (currentDistEl) {
         currentDistEl.textContent = currentDistance;
-    }
-
-    // Update race mode UI if active
-    if (raceMode && raceStarted) {
-        const userDistance = calculatePathWeight(userPath, graphData.nodes);
-        const userTime = raceStartTime ? ((Date.now() - raceStartTime) / 1000).toFixed(1) : '0.0';
-        
-        if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
-        if (raceUserTimeEl) raceUserTimeEl.textContent = userTime + 's';
-        
-        // Check result if algorithm is complete
-        if (raceAlgoComplete) {
-            checkRaceResult();
-        }
     }
 }
 
@@ -837,18 +926,12 @@ async function runDijkstraVisualization() {
 }
 
 /**
- * Render the graph
+ * Render the graph (for Explore tab)
  */
 function render() {
     if (!renderer) return;
     
-    // In race mode, show black canvas if race hasn't started
-    if (raceMode && (!raceStarted || !graphData)) {
-        renderer.clear();
-        return;
-    }
-    
-    // In normal mode, if no graph data, clear canvas
+    // If no graph data, clear canvas
     if (!graphData) {
         renderer.clear();
         return;
@@ -898,99 +981,7 @@ try {
     console.error('Error initializing game:', error);
 }
 
-/**
- * Toggle algorithm race mode on/off
- */
-function toggleAlgorithmRaceMode() {
-    // If player race mode is active, exit it first
-    if (raceMode) {
-        toggleRaceMode();
-    }
-    
-    algoRaceMode = !algoRaceMode;
-
-    if (algoRaceMode) {
-        // Enable algorithm race mode - show all 6 canvas sections
-        const sections = ['algoDijkstraSection', 'algoAstarSection', 'algoBfsSection', 
-                         'algoDfsSection', 'algoGreedySection', 'algoUcsSection'];
-        sections.forEach(sectionId => {
-            const section = document.getElementById(sectionId);
-            if (section) section.style.display = 'block';
-        });
-        
-        if (algoRaceStatsEl) {
-            algoRaceStatsEl.style.display = 'flex';
-        }
-        if (canvasContainer) {
-            canvasContainer.classList.add('algo-race-mode');
-        }
-        if (algoRaceBtn) {
-            algoRaceBtn.textContent = 'Exit Algorithm Race';
-            algoRaceBtn.style.background = '#F44336';
-        }
-
-        // Reset algorithm race state
-        algoRaceStarted = false;
-        algoRaceGraphData = null;
-        Object.keys(algoResults).forEach(key => {
-            algoResults[key] = {
-                result: null,
-                startTime: null,
-                complete: false,
-                highlight: null,
-                visited: [],
-                distances: {},
-                finalDistances: {}
-            };
-        });
-
-        // Reset UI
-        const algoNames = ['Dijkstra', 'Astar', 'Bfs', 'Dfs', 'Greedy', 'Ucs'];
-        algoNames.forEach(name => {
-            const distEl = document.getElementById(`algo${name}Dist`);
-            const timeEl = document.getElementById(`algo${name}Time`);
-            if (distEl) distEl.textContent = '?';
-            if (timeEl) timeEl.textContent = '?';
-        });
-        
-        if (startAlgoRaceBtn) {
-            startAlgoRaceBtn.disabled = false;
-            startAlgoRaceBtn.textContent = 'Start Race';
-        }
-        if (algoRaceResultSection) {
-            algoRaceResultSection.style.display = 'none';
-        }
-
-        // Show black canvases
-        renderAlgorithmRace();
-    } else {
-        // Disable algorithm race mode
-        const sections = ['algoDijkstraSection', 'algoAstarSection', 'algoBfsSection', 
-                         'algoDfsSection', 'algoGreedySection', 'algoUcsSection'];
-        sections.forEach(sectionId => {
-            const section = document.getElementById(sectionId);
-            if (section) section.style.display = 'none';
-        });
-        
-        if (algoRaceStatsEl) {
-            algoRaceStatsEl.style.display = 'none';
-        }
-        if (canvasContainer) {
-            canvasContainer.classList.remove('algo-race-mode');
-        }
-        if (algoRaceBtn) {
-            algoRaceBtn.textContent = 'Algorithm Race';
-            algoRaceBtn.style.background = '#2196F3';
-        }
-        if (algoRaceResultSection) {
-            algoRaceResultSection.style.display = 'none';
-        }
-
-        algoRaceGraphData = null;
-    }
-
-    renderAlgorithmRace();
-}
+// toggleAlgorithmRaceMode removed - now handled by switchTab
 
 /**
  * Get algorithm display name
@@ -1011,7 +1002,7 @@ function getAlgorithmName(algoKey) {
  * Start algorithm race from button
  */
 function startAlgorithmRaceFromButton() {
-    if (!algoRaceMode) return;
+    if (activeTab !== 'compare') return;
     
     // If race is complete, start new race
     const allComplete = Object.values(algoResults).every(state => state.complete);
@@ -1036,7 +1027,7 @@ function startAlgorithmRaceFromButton() {
  * Generate graph for algorithm race
  */
 function generateAlgorithmRaceGraph() {
-    if (!algoRaceMode) return;
+    if (activeTab !== 'compare') return;
     
     // Show loading message
     if (statusMsgEl) {
@@ -1062,7 +1053,7 @@ function generateAlgorithmRaceGraph() {
  * Start algorithm race
  */
 async function startAlgorithmRace() {
-    if (!algoRaceMode || !algoRaceGraphData || !algoRaceStarted) return;
+    if (activeTab !== 'compare' || !algoRaceGraphData || !algoRaceStarted) return;
 
     // Reset state for all algorithms
     Object.keys(algoResults).forEach(key => {
@@ -1233,7 +1224,7 @@ function checkAlgorithmRaceResult() {
  * Start a new algorithm race
  */
 function startNewAlgorithmRace() {
-    if (!algoRaceMode) return;
+    if (activeTab !== 'compare') return;
     
     // Hide result
     if (algoRaceResultSection) {
@@ -1280,7 +1271,7 @@ function startNewAlgorithmRace() {
  * Render algorithm race canvases
  */
 function renderAlgorithmRace() {
-    if (!algoRaceMode) return;
+    if (activeTab !== 'compare') return;
     
     const renderers = {
         'dijkstra': algoDijkstraRenderer,

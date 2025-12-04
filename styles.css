@@ -16,6 +16,103 @@ h1 {
     font-size: 1.8rem;
 }
 
+/* Tab Bar */
+.tab-bar {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #444;
+}
+
+.tab {
+    padding: 12px 30px;
+    background: #333;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #aaa;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 6px 6px 0 0;
+    margin-bottom: -2px;
+}
+
+.tab:hover {
+    background: #3a3a3a;
+    color: #eee;
+}
+
+.tab.active {
+    background: #444;
+    color: #4CAF50;
+    border-bottom: 3px solid #4CAF50;
+}
+
+/* Tab Panels */
+.tab-panel {
+    display: none;
+    width: 100%;
+    max-width: 1600px;
+}
+
+.tab-panel.active {
+    display: block;
+}
+
+.canvas-container {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.canvas-container.race-mode {
+    flex-direction: row;
+    flex-wrap: nowrap;
+}
+
+.canvas-container.race-mode .canvas-section {
+    flex: 1;
+    min-width: 0;
+}
+
+.canvas-container.algo-race-mode {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 15px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.canvas-container.algo-race-mode .canvas-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.canvas-container.algo-race-mode .canvas-section h3 {
+    font-size: 1rem;
+    margin-bottom: 8px;
+}
+
+.canvas-container.algo-race-mode .canvas-section canvas {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    background: #111;
+    border: 2px solid #555;
+    border-radius: 4px;
+}
+
+.race-label {
+    display: block;
+    margin-bottom: 5px;
+    color: #aaa;
+    font-size: 0.85rem;
+}
+
 .controls {
     margin-bottom: 12px;
     background: #333;
@@ -52,13 +149,6 @@ button:disabled {
     cursor: not-allowed;
 }
 
-#canvasContainer {
-    display: flex;
-    gap: 20px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
 .canvas-section {
     display: flex;
     flex-direction: column;
@@ -71,48 +161,12 @@ button:disabled {
     font-size: 1.2rem;
 }
 
-#canvasContainer.race-mode {
-    flex-direction: row;
-    flex-wrap: nowrap;
-}
-
-#canvasContainer.race-mode .canvas-section {
-    flex: 1;
-    min-width: 0;
-}
-
-#gameCanvas, #raceCanvas, #algo1Canvas, #algo2Canvas {
+#gameCanvas, #raceCanvas, #raceUserCanvas {
     background: #111;
     border: 2px solid #555;
     border-radius: 4px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
     max-width: 100%;
-    height: auto;
-}
-
-#canvasContainer.algo-race-mode {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-    gap: 15px;
-    max-width: 1400px;
-    margin: 0 auto;
-}
-
-#canvasContainer.algo-race-mode .canvas-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-#canvasContainer.algo-race-mode .canvas-section h3 {
-    font-size: 1rem;
-    margin-bottom: 8px;
-}
-
-#canvasContainer.algo-race-mode .canvas-section canvas {
-    width: 100%;
-    max-width: 400px;
     height: auto;
 }
 
@@ -152,7 +206,7 @@ button:disabled {
 }
 
 @media (max-width: 1400px) {
-    #canvasContainer.algo-race-mode {
+    .canvas-container.algo-race-mode {
         grid-template-columns: repeat(2, 1fr);
         grid-template-rows: repeat(3, 1fr);
     }
@@ -163,7 +217,7 @@ button:disabled {
 }
 
 @media (max-width: 900px) {
-    #canvasContainer.algo-race-mode {
+    .canvas-container.algo-race-mode {
         grid-template-columns: 1fr;
         grid-template-rows: repeat(6, 1fr);
     }
@@ -174,11 +228,11 @@ button:disabled {
 }
 
 @media (max-width: 1600px) {
-    #canvasContainer.race-mode {
+    .canvas-container.race-mode {
         flex-direction: column;
     }
     
-    #canvasContainer.race-mode .canvas-section {
+    .canvas-container.race-mode .canvas-section {
         width: 100%;
     }
 }
