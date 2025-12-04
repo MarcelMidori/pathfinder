@@ -85,18 +85,6 @@ let raceResultTitleEl = null;
 let raceResultMessageEl = null;
 let algoRaceBtn = null;
 let algoRaceStatsEl = null;
-let algo1Select = null;
-let algo2Select = null;
-let algo1DistEl = null;
-let algo1TimeEl = null;
-let algo2DistEl = null;
-let algo2TimeEl = null;
-let algo1CanvasSection = null;
-let algo2CanvasSection = null;
-let algo1Canvas = null;
-let algo2Canvas = null;
-let algo1CanvasLabel = null;
-let algo2CanvasLabel = null;
 let startAlgoRaceBtn = null;
 let algoRaceResultSection = null;
 let algoRaceResultTitleEl = null;
@@ -138,22 +126,18 @@ export function init() {
         raceResultMessageEl = document.getElementById('raceResultMessage');
         algoRaceBtn = document.getElementById('algoRaceBtn');
         algoRaceStatsEl = document.getElementById('algoRaceStats');
-        algo1Select = document.getElementById('algo1Select');
-        algo2Select = document.getElementById('algo2Select');
-        algo1DistEl = document.getElementById('algo1Dist');
-        algo1TimeEl = document.getElementById('algo1Time');
-        algo2DistEl = document.getElementById('algo2Dist');
-        algo2TimeEl = document.getElementById('algo2Time');
-        algo1CanvasSection = document.getElementById('algo1CanvasSection');
-        algo2CanvasSection = document.getElementById('algo2CanvasSection');
-        algo1Canvas = document.getElementById('algo1Canvas');
-        algo2Canvas = document.getElementById('algo2Canvas');
-        algo1CanvasLabel = document.getElementById('algo1CanvasLabel');
-        algo2CanvasLabel = document.getElementById('algo2CanvasLabel');
         startAlgoRaceBtn = document.getElementById('startAlgoRaceBtn');
         algoRaceResultSection = document.getElementById('algoRaceResultSection');
         algoRaceResultTitleEl = document.getElementById('algoRaceResultTitle');
         algoRaceResultMessageEl = document.getElementById('algoRaceResultMessage');
+        
+        // Algorithm race canvas elements
+        const algoDijkstraCanvas = document.getElementById('algoDijkstraCanvas');
+        const algoAstarCanvas = document.getElementById('algoAstarCanvas');
+        const algoBfsCanvas = document.getElementById('algoBfsCanvas');
+        const algoDfsCanvas = document.getElementById('algoDfsCanvas');
+        const algoGreedyCanvas = document.getElementById('algoGreedyCanvas');
+        const algoUcsCanvas = document.getElementById('algoUcsCanvas');
 
         if (!canvas) {
             throw new Error('Canvas element not found');

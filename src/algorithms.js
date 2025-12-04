@@ -756,3 +756,125 @@ export async function greedyBestFirstAnimated(nodes, startNode, endNode, onStep,
     return result;
 }
 
+/**
+ * Uniform Cost Search algorithm implementation
+ * Similar to Dijkstra but uses priority queue approach
+ * @param {Array} nodes - Array of Node objects
+ * @param {number} startNode - Start node ID
+ * @param {number} endNode - End node ID
+ * @returns {Object} Result object containing path, distance, and visited nodes
+ */
+export function uniformCostSearch(nodes, startNode, endNode) {
+    const distances = {};
+    const parent = {};
+    const visited = new Set();
+    const priorityQueue = [{ id: startNode, cost: 0 }];
+    
+    nodes.forEach(node => {
+        distances[node.id] = Infinity;
+        parent[node.id] = null;
+    });
+    
+    distances[startNode] = 0;
+    
+    while (priorityQueue.length > 0) {
+        priorityQueue.sort((a, b) => a.cost - b.cost);
+        const { id: currentId, cost } = priorityQueue.shift();
+        
+        if (visited.has(currentId)) continue;
+        
+        visited.add(currentId);
+        
+        if (currentId === endNode) {
+            const path = reconstructPath(parent, startNode, endNode);
+            const distance = calculatePathWeight(path, nodes);
+            return {
+                path,
+                distance,
+                visitedNodes: Array.from(visited)
+            };
+        }
+        
+        const currentNode = nodes[currentId];
+        for (const neighbor of currentNode.neighbors) {
+            if (!visited.has(neighbor.id)) {
+                const newCost = cost + neighbor.weight;
+                if (newCost < distances[neighbor.id]) {
+                    distances[neighbor.id] = newCost;
+                    parent[neighbor.id] = currentId;
+                    priorityQueue.push({ id: neighbor.id, cost: newCost });
+                }
+            }
+        }
+    }
+    
+    return {
+        path: [],
+        distance: null,
+        visitedNodes: Array.from(visited)
+    };
+}
+
+/**
+ * Animated Uniform Cost Search visualization
+ */
+export async function uniformCostSearchAnimated(nodes, startNode, endNode, onStep, onComplete, delay = 300) {
+    const distances = {};
+    const parent = {};
+    const visited = new Set();
+    const priorityQueue = [{ id: startNode, cost: 0 }];
+    
+    nodes.forEach(node => {
+        distances[node.id] = Infinity;
+        parent[node.id] = null;
+    });
+    
+    distances[startNode] = 0;
+    
+    while (priorityQueue.length > 0) {
+        priorityQueue.sort((a, b) => a.cost - b.cost);
+        const { id: currentId, cost } = priorityQueue.shift();
+        
+        if (visited.has(currentId)) continue;
+        
+        visited.add(currentId);
+        
+        if (onStep) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            onStep(currentId, Array.from(visited), { ...distances });
+        }
+        
+        if (currentId === endNode) {
+            const path = reconstructPath(parent, startNode, endNode);
+            const distance = calculatePathWeight(path, nodes);
+            const result = {
+                path,
+                distance,
+                visitedNodes: Array.from(visited)
+            };
+            if (onComplete) onComplete(result);
+            return result;
+        }
+        
+        const currentNode = nodes[currentId];
+        for (const neighbor of currentNode.neighbors) {
+            if (!visited.has(neighbor.id)) {
+                const newCost = cost + neighbor.weight;
+                if (newCost < distances[neighbor.id]) {
+                    distances[neighbor.id] = newCost;
+                    parent[neighbor.id] = currentId;
+                    priorityQueue.push({ id: neighbor.id, cost: newCost });
+                }
+            }
+        }
+    }
+    
+    const result = {
+        path: [],
+        distance: null,
+        visitedNodes: Array.from(visited)
+    };
+    if (onComplete) onComplete(result);
+    return result;
+}
+
