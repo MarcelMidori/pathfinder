@@ -918,16 +918,22 @@ try {
  * Toggle algorithm race mode on/off
  */
 function toggleAlgorithmRaceMode() {
+    // If player race mode is active, exit it first
+    if (raceMode) {
+        toggleRaceMode();
+    }
+    
     algoRaceMode = !algoRaceMode;
 
     if (algoRaceMode) {
-        // Enable algorithm race mode
-        if (algo1CanvasSection) {
-            algo1CanvasSection.style.display = 'block';
-        }
-        if (algo2CanvasSection) {
-            algo2CanvasSection.style.display = 'block';
-        }
+        // Enable algorithm race mode - show all 6 canvas sections
+        const sections = ['algoDijkstraSection', 'algoAstarSection', 'algoBfsSection', 
+                         'algoDfsSection', 'algoGreedySection', 'algoUcsSection'];
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (section) section.style.display = 'block';
+        });
+        
         if (algoRaceStatsEl) {
             algoRaceStatsEl.style.display = 'flex';
         }
@@ -942,26 +948,27 @@ function toggleAlgorithmRaceMode() {
         // Reset algorithm race state
         algoRaceStarted = false;
         algoRaceGraphData = null;
-        algo1Result = null;
-        algo2Result = null;
-        algo1StartTime = null;
-        algo2StartTime = null;
-        algo1Complete = false;
-        algo2Complete = false;
-        algo1AnimationHighlight = null;
-        algo1AnimationVisited = [];
-        algo1AnimationDistances = {};
-        algo1FinalDistances = {};
-        algo2AnimationHighlight = null;
-        algo2AnimationVisited = [];
-        algo2AnimationDistances = {};
-        algo2FinalDistances = {};
+        Object.keys(algoResults).forEach(key => {
+            algoResults[key] = {
+                result: null,
+                startTime: null,
+                complete: false,
+                highlight: null,
+                visited: [],
+                distances: {},
+                finalDistances: {}
+            };
+        });
 
         // Reset UI
-        if (algo1DistEl) algo1DistEl.textContent = '?';
-        if (algo1TimeEl) algo1TimeEl.textContent = '?';
-        if (algo2DistEl) algo2DistEl.textContent = '?';
-        if (algo2TimeEl) algo2TimeEl.textContent = '?';
+        const algoNames = ['Dijkstra', 'Astar', 'Bfs', 'Dfs', 'Greedy', 'Ucs'];
+        algoNames.forEach(name => {
+            const distEl = document.getElementById(`algo${name}Dist`);
+            const timeEl = document.getElementById(`algo${name}Time`);
+            if (distEl) distEl.textContent = '?';
+            if (timeEl) timeEl.textContent = '?';
+        });
+        
         if (startAlgoRaceBtn) {
             startAlgoRaceBtn.disabled = false;
             startAlgoRaceBtn.textContent = 'Start Race';
@@ -974,12 +981,13 @@ function toggleAlgorithmRaceMode() {
         renderAlgorithmRace();
     } else {
         // Disable algorithm race mode
-        if (algo1CanvasSection) {
-            algo1CanvasSection.style.display = 'none';
-        }
-        if (algo2CanvasSection) {
-            algo2CanvasSection.style.display = 'none';
-        }
+        const sections = ['algoDijkstraSection', 'algoAstarSection', 'algoBfsSection', 
+                         'algoDfsSection', 'algoGreedySection', 'algoUcsSection'];
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (section) section.style.display = 'none';
+        });
+        
         if (algoRaceStatsEl) {
             algoRaceStatsEl.style.display = 'none';
         }
