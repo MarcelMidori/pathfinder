@@ -322,6 +322,9 @@ function toggleRaceMode() {
             raceBtn.textContent = 'Race Mode';
             raceBtn.style.background = '#2196F3';
         }
+        if (raceResultEl) {
+            raceResultEl.style.display = 'none';
+        }
 
         raceGraphData = null;
         raceStartTime = null;
