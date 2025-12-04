@@ -29,6 +29,7 @@ let raceDifficulty = 'medium'; // 'easy', 'medium', 'hard'
 let raceAnimationHighlight = null;
 let raceAnimationVisited = [];
 let raceAnimationDistances = {}; // Store distances during race Dijkstra visualization
+let raceFinalDistances = {};     // Store final distances after race algorithm completes
 
 // Animation state
 let animationHighlight = null;
@@ -318,12 +319,12 @@ function toggleRaceMode() {
         raceAlgoComplete = false;
         raceAlgoDistance = null;
         raceAlgoTime = null;
-    raceAnimationHighlight = null;
-    raceAnimationVisited = [];
-    raceAnimationDistances = {};
-    raceFinalDistances = {};
-    userPath = [];
-    userPathCosts = {};
+        raceAnimationHighlight = null;
+        raceAnimationVisited = [];
+        raceAnimationDistances = {};
+        raceFinalDistances = {};
+        userPath = [];
+        userPathCosts = {};
 
         // Reset UI
         if (raceUserDistEl) raceUserDistEl.textContent = '0';
