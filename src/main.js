@@ -319,7 +319,9 @@ function toggleRaceMode() {
         raceAlgoTime = null;
         raceAnimationHighlight = null;
         raceAnimationVisited = [];
+        raceAnimationDistances = {};
         userPath = [];
+        userPathCosts = {};
 
         // Reset UI
         if (raceUserDistEl) raceUserDistEl.textContent = '0';
