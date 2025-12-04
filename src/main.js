@@ -643,6 +643,11 @@ function renderRace(optimalPath = null) {
  * Generate a new graph
  */
 function generateNewGraph() {
+    // Don't generate graph if in race mode (race mode has its own graph generation)
+    if (raceMode) {
+        return;
+    }
+    
     // Show loading message
     if (statusMsgEl) {
         statusMsgEl.innerText = "Generating graph...";
@@ -662,6 +667,7 @@ function generateNewGraph() {
     optimalPath = [];
     optimalDistance = null;
     isAnimating = false;
+    finalDistances = {};
     
     if (algoBtn) {
         algoBtn.disabled = false;
@@ -669,21 +675,6 @@ function generateNewGraph() {
 
     if (targetDistEl) {
         targetDistEl.textContent = "?";
-    }
-
-    // If race mode is active and race has started, reset race
-    if (raceMode && raceStarted) {
-        raceGraphData = cloneGraphData(graphData);
-        userPath = [graphData.startNode];
-        userPathCosts = {};
-        calculateUserPathCosts();
-        raceStarted = false;
-        raceAlgoComplete = false;
-        if (startRaceBtn) {
-            startRaceBtn.disabled = false;
-            startRaceBtn.textContent = 'Start Race';
-        }
-        renderRace();
     }
 
     updateUI();

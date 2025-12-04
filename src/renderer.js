@@ -39,10 +39,11 @@ export class Renderer {
     }
 
     /**
-     * Clear the entire canvas
+     * Clear the entire canvas and fill with background color
      */
     clear() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillStyle = COLORS.BACKGROUND;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
     /**
