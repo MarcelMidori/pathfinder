@@ -25,8 +25,12 @@ let optimalDistance = null; // Store optimal distance
 let isAnimating = false;
 let renderer = null;
 let raceRenderer = null; // Renderer for race mode canvas
-let algo1Renderer = null; // Renderer for algorithm 1 canvas
-let algo2Renderer = null; // Renderer for algorithm 2 canvas
+let algoDijkstraRenderer = null;
+let algoAstarRenderer = null;
+let algoBfsRenderer = null;
+let algoDfsRenderer = null;
+let algoGreedyRenderer = null;
+let algoUcsRenderer = null;
 
 // Race mode state
 let raceMode = false;
@@ -219,9 +223,6 @@ function setupEventListeners() {
     window.startRaceFromButton = startRaceFromButton;
     window.startNewRace = startNewRace;
     window.toggleAlgorithmRaceMode = toggleAlgorithmRaceMode;
-    window.setAlgorithm1 = setAlgorithm1;
-    window.setAlgorithm2 = setAlgorithm2;
-    window.setExecutionMode = setExecutionMode;
     window.startAlgorithmRaceFromButton = startAlgorithmRaceFromButton;
 }
 
@@ -969,14 +970,6 @@ function toggleAlgorithmRaceMode() {
             algoRaceResultSection.style.display = 'none';
         }
 
-        // Update canvas labels
-        if (algo1CanvasLabel) {
-            algo1CanvasLabel.textContent = getAlgorithmName(selectedAlgo1);
-        }
-        if (algo2CanvasLabel) {
-            algo2CanvasLabel.textContent = getAlgorithmName(selectedAlgo2);
-        }
-
         // Show black canvases
         renderAlgorithmRace();
     } else {
@@ -1020,43 +1013,6 @@ function getAlgorithmName(algoKey) {
         'ucs': 'UCS'
     };
     return names[algoKey] || algoKey;
-}
-
-/**
- * Set algorithm 1
- */
-function setAlgorithm1(algoName) {
-    selectedAlgo1 = algoName;
-    if (algo1CanvasLabel) {
-        algo1CanvasLabel.textContent = getAlgorithmName(algoName);
-    }
-}
-
-/**
- * Set algorithm 2
- */
-function setAlgorithm2(algoName) {
-    selectedAlgo2 = algoName;
-    if (algo2CanvasLabel) {
-        algo2CanvasLabel.textContent = getAlgorithmName(algoName);
-    }
-}
-
-/**
- * Set execution mode
- */
-function setExecutionMode(mode) {
-    executionMode = mode;
-    
-    // Update button states
-    const modeBtns = document.querySelectorAll('.execution-mode-btn');
-    modeBtns.forEach(btn => {
-        if (btn.dataset.mode === mode) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
 }
 
 /**
