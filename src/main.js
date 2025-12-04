@@ -569,27 +569,44 @@ function setRaceDifficulty(difficulty) {
 }
 
 /**
- * Start race from button click
- * Also handles "New Race" functionality when race is complete
+ * Start race from button click - always starts a new race directly
  */
 function startRaceFromButton() {
     if (activeTab !== 'race') return;
     
-    // If race is complete, start new race
-    if (raceStarted && raceAlgoComplete) {
-        resetRaceState();
-        return;
+    // If race is in progress (not complete), ignore
+    if (raceStarted && !raceAlgoComplete) return;
+    
+    // Reset state if previous race exists
+    if (raceStarted) {
+        raceStarted = false;
+        raceGraphData = null;
+        raceStartTime = null;
+        raceAlgoComplete = false;
+        raceAlgoDistance = null;
+        raceAlgoTime = null;
+        raceAnimationHighlight = null;
+        raceAnimationVisited = [];
+        raceAnimationDistances = {};
+        raceFinalDistances = {};
+        userPath = [];
+        userPathCosts = {};
+        
+        // Reset UI stats
+        if (raceUserDistEl) raceUserDistEl.textContent = '0';
+        if (raceUserTimeEl) raceUserTimeEl.textContent = '0.0s';
+        if (raceAlgoDistEl) raceAlgoDistEl.textContent = '?';
+        if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = '?';
+        if (raceResultSection) raceResultSection.style.display = 'none';
     }
-
-    if (raceStarted) return;
     
     // Disable start button
     if (startRaceBtn) {
         startRaceBtn.disabled = true;
-        startRaceBtn.textContent = 'Race Started';
+        startRaceBtn.textContent = 'Racing...';
     }
     
-    // Generate new graph for race
+    // Generate new graph and start race
     generateRaceGraph();
 }
 
@@ -727,10 +744,10 @@ function checkRaceResult() {
             }
         }
         
-        // Update button to "New Race"
+        // Update button to "Start New Race"
         if (startRaceBtn) {
             startRaceBtn.disabled = false;
-            startRaceBtn.textContent = 'New Race';
+            startRaceBtn.textContent = 'Start New Race';
         }
     }
 }
