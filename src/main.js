@@ -19,6 +19,7 @@ let raceRenderer = null; // Renderer for race mode canvas
 
 // Race mode state
 let raceMode = false;
+let raceStarted = false; // Whether race has been started
 let raceStartTime = null;
 let raceAlgoComplete = false;
 let raceAlgoDistance = null;
@@ -46,10 +47,11 @@ let raceAlgoDistEl = null;
 let raceAlgoTimeEl = null;
 let raceCanvasSection = null;
 let canvasContainer = null;
+let startRaceBtn = null;
 
 // Race difficulty speeds (delay in milliseconds)
 const RACE_SPEEDS = {
-    easy: 600,   // Slow - easier to beat
+    easy: 1000,  // Very slow - much easier to beat
     medium: 300, // Medium speed
     hard: 150    // Fast - harder to beat
 };
@@ -74,6 +76,7 @@ export function init() {
         raceAlgoTimeEl = document.getElementById('raceAlgoTime');
         raceCanvasSection = document.getElementById('raceCanvasSection');
         canvasContainer = document.getElementById('canvasContainer');
+        startRaceBtn = document.getElementById('startRaceBtn');
 
         if (!canvas) {
             throw new Error('Canvas element not found');
@@ -134,6 +137,7 @@ function setupEventListeners() {
     window.runDijkstraAnimation = runDijkstraVisualization;
     window.toggleRaceMode = toggleRaceMode;
     window.setRaceDifficulty = setRaceDifficulty;
+    window.startRaceFromButton = startRaceFromButton;
 }
 
 /**
@@ -345,17 +349,63 @@ function setRaceDifficulty(difficulty) {
         }
     });
     
-    // If race is already running, restart it with new difficulty
-    if (raceMode && raceGraphData && !raceAlgoComplete) {
-        startRace();
+    // Don't auto-restart - user must click Start Race button
+}
+
+/**
+ * Start race from button click - generates new graph and starts race
+ */
+function startRaceFromButton() {
+    if (!raceMode || raceStarted) return;
+    
+    // Disable start button
+    if (startRaceBtn) {
+        startRaceBtn.disabled = true;
+        startRaceBtn.textContent = 'Race Started';
     }
+    
+    // Generate new graph for race
+    generateRaceGraph();
+}
+
+/**
+ * Generate new graph for race mode
+ */
+function generateRaceGraph() {
+    if (!raceMode) return;
+    
+    // Show loading message
+    if (statusMsgEl) {
+        statusMsgEl.innerText = "Generating race graph...";
+        statusMsgEl.style.color = "#aaa";
+    }
+
+    // Generate new graph
+    graphData = generateGraph({
+        nodeCount: DEFAULT_NODE_COUNT,
+        connectivityRadius: DEFAULT_CONNECTIVITY_RADIUS,
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height
+    });
+
+    // Clone for race canvas
+    raceGraphData = cloneGraphData(graphData);
+    
+    // Reset user path
+    userPath = [graphData.startNode];
+    optimalPath = [];
+    optimalDistance = null;
+
+    // Start the race
+    raceStarted = true;
+    startRace();
 }
 
 /**
  * Start race mode - run algorithm automatically with visualization
  */
 async function startRace() {
-    if (!raceMode || !raceGraphData) return;
+    if (!raceMode || !raceGraphData || !raceStarted) return;
 
     raceStartTime = Date.now();
     raceAlgoComplete = false;
@@ -369,6 +419,10 @@ async function startRace() {
     if (raceUserTimeEl) raceUserTimeEl.textContent = '0.0s';
     if (raceAlgoDistEl) raceAlgoDistEl.textContent = '?';
     if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = '?';
+
+    // Render both canvases with new graph
+    render();
+    renderRace();
 
     // Get speed based on difficulty
     const speed = RACE_SPEEDS[raceDifficulty] || RACE_SPEEDS.medium;
@@ -410,7 +464,13 @@ async function startRace() {
  * Render race canvas with animation state
  */
 function renderRace(optimalPath = null) {
-    if (!raceMode || !raceGraphData || !raceRenderer) return;
+    if (!raceMode || !raceRenderer) return;
+    
+    // If race hasn't started, show black canvas
+    if (!raceStarted || !raceGraphData) {
+        raceRenderer.clear();
+        return;
+    }
     
     // If algorithm is complete, show optimal path
     if (raceAlgoComplete && optimalPath) {
@@ -452,10 +512,17 @@ function generateNewGraph() {
         targetDistEl.textContent = "?";
     }
 
-    // If race mode is active, clone graph and restart race
-    if (raceMode) {
+    // If race mode is active and race has started, reset race
+    if (raceMode && raceStarted) {
         raceGraphData = cloneGraphData(graphData);
-        startRace();
+        userPath = [graphData.startNode];
+        raceStarted = false;
+        raceAlgoComplete = false;
+        if (startRaceBtn) {
+            startRaceBtn.disabled = false;
+            startRaceBtn.textContent = 'Start Race';
+        }
+        renderRace();
     }
 
     updateUI();
