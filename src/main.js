@@ -42,6 +42,8 @@ let raceStartTime = null;
 let raceAlgoComplete = false;
 let raceAlgoDistance = null;
 let raceAlgoTime = null;
+let raceUserComplete = false; // Whether user has finished their path
+let raceUserFinalTime = null; // Store user's time when they finish
 let raceDifficulty = 'easy'; // 'easy', 'medium', 'hard'
 let raceAlgorithm = 'dijkstra'; // Selected algorithm for race
 let raceAnimationHighlight = null;
@@ -267,6 +269,8 @@ function resetRaceState() {
     raceAlgoComplete = false;
     raceAlgoDistance = null;
     raceAlgoTime = null;
+    raceUserComplete = false;
+    raceUserFinalTime = null;
     raceAnimationHighlight = null;
     raceAnimationVisited = [];
     raceAnimationDistances = {};
@@ -281,7 +285,7 @@ function resetRaceState() {
     if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = '?';
     if (startRaceBtn) {
         startRaceBtn.disabled = false;
-        startRaceBtn.textContent = 'Start Race';
+        startRaceBtn.textContent = 'Start New Race';
     }
     if (raceResultSection) {
         raceResultSection.style.display = 'none';
@@ -322,7 +326,7 @@ function resetAlgoRaceState() {
     
     if (startAlgoRaceBtn) {
         startAlgoRaceBtn.disabled = false;
-        startAlgoRaceBtn.textContent = 'Start Race';
+        startAlgoRaceBtn.textContent = 'Start New Race';
     }
     if (algoRaceResultSection) {
         algoRaceResultSection.style.display = 'none';
@@ -395,7 +399,9 @@ function handleRaceCanvasClick(e) {
             updateRaceUserStats();
             
             // Check if user reached end
-            if (clickedNode.id === raceGraphData.endNode) {
+            if (clickedNode.id === raceGraphData.endNode && !raceUserComplete) {
+                raceUserComplete = true;
+                raceUserFinalTime = ((Date.now() - raceStartTime) / 1000).toFixed(1);
                 checkRaceResult();
             }
         }
@@ -429,7 +435,10 @@ function updateRaceUserStats() {
     if (!raceGraphData || userPath.length === 0) return;
     
     const distance = calculatePathWeight(userPath, raceGraphData.nodes);
-    const time = raceStartTime ? ((Date.now() - raceStartTime) / 1000).toFixed(1) : '0.0';
+    // Use stored final time if user has completed, otherwise show current elapsed time
+    const time = raceUserComplete && raceUserFinalTime 
+        ? raceUserFinalTime 
+        : (raceStartTime ? ((Date.now() - raceStartTime) / 1000).toFixed(1) : '0.0');
     
     if (raceUserDistEl) raceUserDistEl.textContent = distance;
     if (raceUserTimeEl) raceUserTimeEl.textContent = time + 's';
@@ -585,6 +594,8 @@ function startRaceFromButton() {
         raceAlgoComplete = false;
         raceAlgoDistance = null;
         raceAlgoTime = null;
+        raceUserComplete = false;
+        raceUserFinalTime = null;
         raceAnimationHighlight = null;
         raceAnimationVisited = [];
         raceAnimationDistances = {};
@@ -716,13 +727,15 @@ function checkRaceResult() {
     if (!raceAlgoComplete) return;
     
     const userDistance = calculatePathWeight(userPath, raceGraphData.nodes);
-    const userTime = raceStartTime ? ((Date.now() - raceStartTime) / 1000).toFixed(1) : '0.0';
     
-    if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
-    if (raceUserTimeEl) raceUserTimeEl.textContent = userTime + 's';
+    // Only update UI if user has completed path
+    if (raceUserComplete && raceUserFinalTime) {
+        if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
+        if (raceUserTimeEl) raceUserTimeEl.textContent = raceUserFinalTime + 's';
+    }
     
     // Only show result if user has completed path
-    if (userPath.length > 0 && userPath[userPath.length - 1] === raceGraphData.endNode) {
+    if (raceUserComplete && userPath.length > 0 && userPath[userPath.length - 1] === raceGraphData.endNode) {
         if (raceResultSection) {
             raceResultSection.style.display = 'block';
         }
@@ -1009,24 +1022,46 @@ function getAlgorithmName(algoKey) {
 }
 
 /**
- * Start algorithm race from button
+ * Start algorithm race from button - always starts directly
  */
 function startAlgorithmRaceFromButton() {
     if (activeTab !== 'compare') return;
     
-    // If race is complete, start new race
+    // If race is in progress (not complete), ignore
     const allComplete = Object.values(algoResults).every(state => state.complete);
-    if (algoRaceStarted && allComplete) {
-        startNewAlgorithmRace();
-        return;
+    if (algoRaceStarted && !allComplete) return;
+    
+    // Reset state if previous race exists
+    if (algoRaceStarted) {
+        algoRaceStarted = false;
+        algoRaceGraphData = null;
+        Object.keys(algoResults).forEach(key => {
+            algoResults[key] = {
+                result: null,
+                startTime: null,
+                complete: false,
+                highlight: null,
+                visited: [],
+                distances: {},
+                finalDistances: {}
+            };
+        });
+        
+        // Reset UI stats
+        const algoNames = ['Dijkstra', 'Astar', 'Bfs', 'Dfs'];
+        algoNames.forEach(name => {
+            const distEl = document.getElementById(`algo${name}Dist`);
+            const timeEl = document.getElementById(`algo${name}Time`);
+            if (distEl) distEl.textContent = '?';
+            if (timeEl) timeEl.textContent = '?';
+        });
+        if (algoRaceResultSection) algoRaceResultSection.style.display = 'none';
     }
-
-    if (algoRaceStarted) return;
     
     // Disable start button
     if (startAlgoRaceBtn) {
         startAlgoRaceBtn.disabled = true;
-        startAlgoRaceBtn.textContent = 'Race Started';
+        startAlgoRaceBtn.textContent = 'Racing...';
     }
     
     // Generate new graph and start race
@@ -1219,10 +1254,10 @@ function checkAlgorithmRaceResult() {
         }
     }
     
-    // Update button to "New Race"
+    // Update button to "Start New Race"
     if (startAlgoRaceBtn) {
         startAlgoRaceBtn.disabled = false;
-        startAlgoRaceBtn.textContent = 'New Race';
+        startAlgoRaceBtn.textContent = 'Start New Race';
     }
 }
 
@@ -1262,10 +1297,10 @@ function startNewAlgorithmRace() {
     });
     if (startAlgoRaceBtn) {
         startAlgoRaceBtn.disabled = false;
-        startAlgoRaceBtn.textContent = 'Start Race';
+        startAlgoRaceBtn.textContent = 'Start New Race';
     }
     if (statusMsgEl) {
-        statusMsgEl.innerText = 'Click Start Race to see all algorithms compete';
+        statusMsgEl.innerText = 'Click Start New Race to see all algorithms compete';
         statusMsgEl.style.color = '#aaa';
     }
     
