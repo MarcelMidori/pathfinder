@@ -14,10 +14,6 @@ import {
     bfsAnimated,
     dfs,
     dfsAnimated,
-    greedyBestFirst,
-    greedyBestFirstAnimated,
-    uniformCostSearch,
-    uniformCostSearchAnimated,
     calculatePathWeight 
 } from './algorithms.js';
 
@@ -39,8 +35,6 @@ let algoDijkstraRenderer = null;
 let algoAstarRenderer = null;
 let algoBfsRenderer = null;
 let algoDfsRenderer = null;
-let algoGreedyRenderer = null;
-let algoUcsRenderer = null;
 
 // Race mode state
 let raceStarted = false; // Whether race has been started
@@ -62,9 +56,7 @@ const algoResults = {
     dijkstra: { result: null, startTime: null, complete: false, highlight: null, visited: [], distances: {}, finalDistances: {} },
     astar: { result: null, startTime: null, complete: false, highlight: null, visited: [], distances: {}, finalDistances: {} },
     bfs: { result: null, startTime: null, complete: false, highlight: null, visited: [], distances: {}, finalDistances: {} },
-    dfs: { result: null, startTime: null, complete: false, highlight: null, visited: [], distances: {}, finalDistances: {} },
-    greedy: { result: null, startTime: null, complete: false, highlight: null, visited: [], distances: {}, finalDistances: {} },
-    ucs: { result: null, startTime: null, complete: false, highlight: null, visited: [], distances: {}, finalDistances: {} }
+    dfs: { result: null, startTime: null, complete: false, highlight: null, visited: [], distances: {}, finalDistances: {} }
 };
 
 // Animation state
@@ -141,8 +133,6 @@ export function init() {
         const algoAstarCanvas = document.getElementById('algoAstarCanvas');
         const algoBfsCanvas = document.getElementById('algoBfsCanvas');
         const algoDfsCanvas = document.getElementById('algoDfsCanvas');
-        const algoGreedyCanvas = document.getElementById('algoGreedyCanvas');
-        const algoUcsCanvas = document.getElementById('algoUcsCanvas');
 
         if (!canvas) {
             throw new Error('Canvas element not found');
@@ -156,8 +146,6 @@ export function init() {
         if (algoAstarCanvas) algoAstarRenderer = new Renderer(algoAstarCanvas);
         if (algoBfsCanvas) algoBfsRenderer = new Renderer(algoBfsCanvas);
         if (algoDfsCanvas) algoDfsRenderer = new Renderer(algoDfsCanvas);
-        if (algoGreedyCanvas) algoGreedyRenderer = new Renderer(algoGreedyCanvas);
-        if (algoUcsCanvas) algoUcsRenderer = new Renderer(algoUcsCanvas);
 
         // Set up event listeners
         setupEventListeners();
@@ -324,7 +312,7 @@ function resetAlgoRaceState() {
     });
     
     // Reset UI
-    const algoNames = ['Dijkstra', 'Astar', 'Bfs', 'Dfs', 'Greedy', 'Ucs'];
+    const algoNames = ['Dijkstra', 'Astar', 'Bfs', 'Dfs'];
     algoNames.forEach(name => {
         const distEl = document.getElementById(`algo${name}Dist`);
         const timeEl = document.getElementById(`algo${name}Time`);
@@ -998,9 +986,7 @@ function getAlgorithmName(algoKey) {
         'dijkstra': 'Dijkstra',
         'astar': 'A*',
         'bfs': 'BFS',
-        'dfs': 'DFS',
-        'greedy': 'Greedy',
-        'ucs': 'UCS'
+        'dfs': 'DFS'
     };
     return names[algoKey] || algoKey;
 }
@@ -1076,7 +1062,7 @@ async function startAlgorithmRace() {
     });
 
     // Reset UI
-    const algoNames = ['Dijkstra', 'Astar', 'Bfs', 'Dfs', 'Greedy', 'Ucs'];
+    const algoNames = ['Dijkstra', 'Astar', 'Bfs', 'Dfs'];
     algoNames.forEach(name => {
         const distEl = document.getElementById(`algo${name}Dist`);
         const timeEl = document.getElementById(`algo${name}Time`);
@@ -1095,7 +1081,7 @@ async function startAlgorithmRace() {
  * Run all 6 algorithms simultaneously
  */
 async function runAllAlgorithmsRace() {
-    const algorithms = ['dijkstra', 'astar', 'bfs', 'dfs', 'greedy', 'ucs'];
+    const algorithms = ['dijkstra', 'astar', 'bfs', 'dfs'];
     const promises = algorithms.map(algoName => runAlgorithm(algoName));
     
     await Promise.all(promises);
@@ -1133,9 +1119,7 @@ async function runAlgorithm(algoName) {
             'dijkstra': 'Dijkstra',
             'astar': 'Astar',
             'bfs': 'Bfs',
-            'dfs': 'Dfs',
-            'greedy': 'Greedy',
-            'ucs': 'Ucs'
+            'dfs': 'Dfs'
         };
         const displayName = nameMap[algoName];
         const distEl = document.getElementById(`algo${displayName}Dist`);
@@ -1167,9 +1151,7 @@ function getAlgorithmFunction(algoName) {
         'dijkstra': dijkstraAnimated,
         'astar': aStarAnimated,
         'bfs': bfsAnimated,
-        'dfs': dfsAnimated,
-        'greedy': greedyBestFirstAnimated,
-        'ucs': uniformCostSearchAnimated
+        'dfs': dfsAnimated
     };
     return algorithms[algoName] || dijkstraAnimated;
 }
@@ -1254,7 +1236,7 @@ function startNewAlgorithmRace() {
     });
     
     // Reset UI
-    const algoNames = ['Dijkstra', 'Astar', 'Bfs', 'Dfs', 'Greedy', 'Ucs'];
+    const algoNames = ['Dijkstra', 'Astar', 'Bfs', 'Dfs'];
     algoNames.forEach(name => {
         const distEl = document.getElementById(`algo${name}Dist`);
         const timeEl = document.getElementById(`algo${name}Time`);
@@ -1284,9 +1266,7 @@ function renderAlgorithmRace() {
         'dijkstra': algoDijkstraRenderer,
         'astar': algoAstarRenderer,
         'bfs': algoBfsRenderer,
-        'dfs': algoDfsRenderer,
-        'greedy': algoGreedyRenderer,
-        'ucs': algoUcsRenderer
+        'dfs': algoDfsRenderer
     };
     
     // If race hasn't started, show black canvases
@@ -1344,9 +1324,7 @@ async function runSimulation() {
         { name: 'Dijkstra', key: 'dijkstra', fn: dijkstra },
         { name: 'A*', key: 'astar', fn: aStar },
         { name: 'BFS', key: 'bfs', fn: bfs },
-        { name: 'DFS', key: 'dfs', fn: dfs },
-        { name: 'Greedy', key: 'greedy', fn: greedyBestFirst },
-        { name: 'UCS', key: 'ucs', fn: uniformCostSearch }
+        { name: 'DFS', key: 'dfs', fn: dfs }
     ];
     
     // Statistics storage

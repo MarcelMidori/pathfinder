@@ -59,8 +59,6 @@
                     <option value="astar">A*</option>
                     <option value="bfs">BFS</option>
                     <option value="dfs">DFS</option>
-                    <option value="greedy">Greedy</option>
-                    <option value="ucs">UCS</option>
                 </select>
                 <label class="race-label">Difficulty:</label>
                 <div class="difficulty-selector">
@@ -142,16 +140,6 @@
                     <div class="stat-box">Distance: <span id="algoDfsDist" class="val">?</span></div>
                     <div class="stat-box">Time: <span id="algoDfsTime" class="val">?</span></div>
                 </div>
-                <div class="algo-stat-item">
-                    <h4>Greedy</h4>
-                    <div class="stat-box">Distance: <span id="algoGreedyDist" class="val">?</span></div>
-                    <div class="stat-box">Time: <span id="algoGreedyTime" class="val">?</span></div>
-                </div>
-                <div class="algo-stat-item">
-                    <h4>UCS</h4>
-                    <div class="stat-box">Distance: <span id="algoUcsDist" class="val">?</span></div>
-                    <div class="stat-box">Time: <span id="algoUcsTime" class="val">?</span></div>
-                </div>
             </div>
         </div>
 
@@ -171,14 +159,6 @@
             <div class="canvas-section" id="algoDfsSection">
                 <h3>DFS</h3>
                 <canvas id="algoDfsCanvas" width="400" height="300"></canvas>
-            </div>
-            <div class="canvas-section" id="algoGreedySection">
-                <h3>Greedy</h3>
-                <canvas id="algoGreedyCanvas" width="400" height="300"></canvas>
-            </div>
-            <div class="canvas-section" id="algoUcsSection">
-                <h3>UCS</h3>
-                <canvas id="algoUcsCanvas" width="400" height="300"></canvas>
             </div>
         </div>
     </div>
