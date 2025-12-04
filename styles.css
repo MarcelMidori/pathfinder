@@ -117,6 +117,35 @@ button:disabled {
     font-size: 1.1rem;
 }
 
+.difficulty-selector {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.difficulty-btn {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    background: #555;
+    border: 2px solid #666;
+    color: #eee;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.difficulty-btn:hover {
+    background: #666;
+    border-color: #777;
+}
+
+.difficulty-btn.active {
+    background: #4CAF50;
+    border-color: #4CAF50;
+    color: white;
+    font-weight: bold;
+}
+
 .stats {
     display: flex;
     gap: 30px;

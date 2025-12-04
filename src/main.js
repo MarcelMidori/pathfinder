@@ -23,6 +23,9 @@ let raceStartTime = null;
 let raceAlgoComplete = false;
 let raceAlgoDistance = null;
 let raceAlgoTime = null;
+let raceDifficulty = 'medium'; // 'easy', 'medium', 'hard'
+let raceAnimationHighlight = null;
+let raceAnimationVisited = [];
 
 // Animation state
 let animationHighlight = null;
@@ -43,6 +46,13 @@ let raceAlgoDistEl = null;
 let raceAlgoTimeEl = null;
 let raceCanvasSection = null;
 let canvasContainer = null;
+
+// Race difficulty speeds (delay in milliseconds)
+const RACE_SPEEDS = {
+    easy: 600,   // Slow - easier to beat
+    medium: 300, // Medium speed
+    hard: 150    // Fast - harder to beat
+};
 
 /**
  * Initialize the game
@@ -123,6 +133,7 @@ function setupEventListeners() {
     window.resetProgress = resetUserPath;
     window.runDijkstraAnimation = runDijkstraVisualization;
     window.toggleRaceMode = toggleRaceMode;
+    window.setRaceDifficulty = setRaceDifficulty;
 }
 
 /**
@@ -275,6 +286,16 @@ function toggleRaceMode() {
             raceBtn.style.background = '#F44336';
         }
 
+        // Initialize difficulty selector
+        const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+        difficultyBtns.forEach(btn => {
+            if (btn.dataset.difficulty === raceDifficulty) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
         // Clone graph for race mode
         if (graphData) {
             raceGraphData = cloneGraphData(graphData);
@@ -308,7 +329,30 @@ function toggleRaceMode() {
 }
 
 /**
- * Start race mode - run algorithm automatically
+ * Set race difficulty
+ */
+function setRaceDifficulty(difficulty) {
+    if (!['easy', 'medium', 'hard'].includes(difficulty)) return;
+    
+    raceDifficulty = difficulty;
+    
+    // Update button styles
+    document.querySelectorAll('.difficulty-btn').forEach(btn => {
+        if (btn.dataset.difficulty === difficulty) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // If race is already running, restart it with new difficulty
+    if (raceMode && raceGraphData && !raceAlgoComplete) {
+        startRace();
+    }
+}
+
+/**
+ * Start race mode - run algorithm automatically with visualization
  */
 async function startRace() {
     if (!raceMode || !raceGraphData) return;
@@ -317,6 +361,8 @@ async function startRace() {
     raceAlgoComplete = false;
     raceAlgoDistance = null;
     raceAlgoTime = null;
+    raceAnimationHighlight = null;
+    raceAnimationVisited = [];
 
     // Reset race UI
     if (raceUserDistEl) raceUserDistEl.textContent = '0';
@@ -324,13 +370,13 @@ async function startRace() {
     if (raceAlgoDistEl) raceAlgoDistEl.textContent = '?';
     if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = '?';
 
-    // Run Dijkstra on race canvas
-    const raceAnimationVisited = [];
-    let raceCurrentHighlight = null;
+    // Get speed based on difficulty
+    const speed = RACE_SPEEDS[raceDifficulty] || RACE_SPEEDS.medium;
 
+    // Run Dijkstra on race canvas with visualization
     const onStep = (currentNode, visited, distances) => {
-        raceCurrentHighlight = currentNode;
-        raceAnimationVisited.push(...visited.filter(v => !raceAnimationVisited.includes(v)));
+        raceAnimationHighlight = currentNode;
+        raceAnimationVisited = visited;
         renderRace();
     };
 
@@ -343,27 +389,37 @@ async function startRace() {
         if (raceAlgoDistEl) raceAlgoDistEl.textContent = result.distance || '?';
         if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = raceAlgoTime + 's';
 
-        // Show optimal path on race canvas
+        // Clear animation state and show optimal path
+        raceAnimationHighlight = null;
+        raceAnimationVisited = [];
         renderRace(result.path);
     };
 
-    // Run algorithm without animation delay for race mode
+    // Run algorithm with visualization at selected speed
     await dijkstraAnimated(
         raceGraphData.nodes,
         raceGraphData.startNode,
         raceGraphData.endNode,
         onStep,
         onComplete,
-        50 // Fast animation for race mode
+        speed
     );
 }
 
 /**
- * Render race canvas
+ * Render race canvas with animation state
  */
 function renderRace(optimalPath = null) {
     if (!raceMode || !raceGraphData || !raceRenderer) return;
-    raceRenderer.draw(raceGraphData, [], [], [], optimalPath || []);
+    
+    // If algorithm is complete, show optimal path
+    if (raceAlgoComplete && optimalPath) {
+        raceRenderer.draw(raceGraphData, [], [], [], optimalPath);
+    } else {
+        // Show animation state during algorithm execution
+        const highlightNodes = raceAnimationHighlight !== null ? [raceAnimationHighlight] : [];
+        raceRenderer.draw(raceGraphData, [], highlightNodes, raceAnimationVisited, []);
+    }
 }
 
 /**
