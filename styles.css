@@ -81,13 +81,23 @@ button:disabled {
     min-width: 0;
 }
 
-#gameCanvas, #raceCanvas {
+#gameCanvas, #raceCanvas, #algo1Canvas, #algo2Canvas {
     background: #111;
     border: 2px solid #555;
     border-radius: 4px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
     max-width: 100%;
     height: auto;
+}
+
+#canvasContainer.algo-race-mode {
+    flex-direction: row;
+    flex-wrap: nowrap;
+}
+
+#canvasContainer.algo-race-mode .canvas-section {
+    flex: 1;
+    min-width: 0;
 }
 
 @media (max-width: 1600px) {
@@ -171,6 +181,58 @@ button:disabled {
     background: #555;
     cursor: not-allowed;
     opacity: 0.7;
+}
+
+.algo-select {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    background: #333;
+    border: 2px solid #555;
+    color: #eee;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.algo-select:hover {
+    border-color: #666;
+}
+
+.algo-select:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.execution-mode-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.execution-mode-btn {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    background: #555;
+    border: 2px solid #666;
+    color: #eee;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.execution-mode-btn:hover {
+    background: #666;
+    border-color: #777;
+}
+
+.execution-mode-btn.active {
+    background: #2196F3;
+    border-color: #2196F3;
+    color: white;
+    font-weight: bold;
 }
 
 #raceResultSection h3 {

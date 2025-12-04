@@ -5,7 +5,14 @@
 
 import { generateGraph, DEFAULT_NODE_COUNT, DEFAULT_CONNECTIVITY_RADIUS } from './graph.js';
 import { Renderer } from './renderer.js';
-import { dijkstraAnimated, calculatePathWeight } from './algorithms.js';
+import { 
+    dijkstraAnimated, 
+    aStarAnimated,
+    bfsAnimated,
+    dfsAnimated,
+    greedyBestFirstAnimated,
+    calculatePathWeight 
+} from './algorithms.js';
 
 // Game state
 let graphData = null;
@@ -17,6 +24,8 @@ let optimalDistance = null; // Store optimal distance
 let isAnimating = false;
 let renderer = null;
 let raceRenderer = null; // Renderer for race mode canvas
+let algo1Renderer = null; // Renderer for algorithm 1 canvas
+let algo2Renderer = null; // Renderer for algorithm 2 canvas
 
 // Race mode state
 let raceMode = false;
@@ -30,6 +39,28 @@ let raceAnimationHighlight = null;
 let raceAnimationVisited = [];
 let raceAnimationDistances = {}; // Store distances during race Dijkstra visualization
 let raceFinalDistances = {};     // Store final distances after race algorithm completes
+
+// Algorithm race mode state
+let algoRaceMode = false;
+let algoRaceStarted = false;
+let selectedAlgo1 = 'dijkstra';
+let selectedAlgo2 = 'astar';
+let executionMode = 'simultaneous'; // 'simultaneous' or 'sequential'
+let algoRaceGraphData = null;
+let algo1Result = null;
+let algo2Result = null;
+let algo1StartTime = null;
+let algo2StartTime = null;
+let algo1Complete = false;
+let algo2Complete = false;
+let algo1AnimationHighlight = null;
+let algo1AnimationVisited = [];
+let algo1AnimationDistances = {};
+let algo1FinalDistances = {};
+let algo2AnimationHighlight = null;
+let algo2AnimationVisited = [];
+let algo2AnimationDistances = {};
+let algo2FinalDistances = {};
 
 // Animation state
 let animationHighlight = null;
@@ -56,6 +87,24 @@ let startRaceBtn = null;
 let raceResultSection = null;
 let raceResultTitleEl = null;
 let raceResultMessageEl = null;
+let algoRaceBtn = null;
+let algoRaceStatsEl = null;
+let algo1Select = null;
+let algo2Select = null;
+let algo1DistEl = null;
+let algo1TimeEl = null;
+let algo2DistEl = null;
+let algo2TimeEl = null;
+let algo1CanvasSection = null;
+let algo2CanvasSection = null;
+let algo1Canvas = null;
+let algo2Canvas = null;
+let algo1CanvasLabel = null;
+let algo2CanvasLabel = null;
+let startAlgoRaceBtn = null;
+let algoRaceResultSection = null;
+let algoRaceResultTitleEl = null;
+let algoRaceResultMessageEl = null;
 
 // Race difficulty speeds (delay in milliseconds)
 const RACE_SPEEDS = {
@@ -63,6 +112,9 @@ const RACE_SPEEDS = {
     medium: 300, // Medium speed
     hard: 150    // Fast - harder to beat
 };
+
+// Algorithm speed (delay in milliseconds)
+const ALGO_RACE_SPEED = 100;
 
 /**
  * Initialize the game
@@ -88,6 +140,24 @@ export function init() {
         raceResultSection = document.getElementById('raceResultSection');
         raceResultTitleEl = document.getElementById('raceResultTitle');
         raceResultMessageEl = document.getElementById('raceResultMessage');
+        algoRaceBtn = document.getElementById('algoRaceBtn');
+        algoRaceStatsEl = document.getElementById('algoRaceStats');
+        algo1Select = document.getElementById('algo1Select');
+        algo2Select = document.getElementById('algo2Select');
+        algo1DistEl = document.getElementById('algo1Dist');
+        algo1TimeEl = document.getElementById('algo1Time');
+        algo2DistEl = document.getElementById('algo2Dist');
+        algo2TimeEl = document.getElementById('algo2Time');
+        algo1CanvasSection = document.getElementById('algo1CanvasSection');
+        algo2CanvasSection = document.getElementById('algo2CanvasSection');
+        algo1Canvas = document.getElementById('algo1Canvas');
+        algo2Canvas = document.getElementById('algo2Canvas');
+        algo1CanvasLabel = document.getElementById('algo1CanvasLabel');
+        algo2CanvasLabel = document.getElementById('algo2CanvasLabel');
+        startAlgoRaceBtn = document.getElementById('startAlgoRaceBtn');
+        algoRaceResultSection = document.getElementById('algoRaceResultSection');
+        algoRaceResultTitleEl = document.getElementById('algoRaceResultTitle');
+        algoRaceResultMessageEl = document.getElementById('algoRaceResultMessage');
 
         if (!canvas) {
             throw new Error('Canvas element not found');
@@ -97,6 +167,12 @@ export function init() {
         renderer = new Renderer(canvas);
         if (raceCanvas) {
             raceRenderer = new Renderer(raceCanvas);
+        }
+        if (algo1Canvas) {
+            algo1Renderer = new Renderer(algo1Canvas);
+        }
+        if (algo2Canvas) {
+            algo2Renderer = new Renderer(algo2Canvas);
         }
 
         // Set up event listeners
@@ -150,6 +226,11 @@ function setupEventListeners() {
     window.setRaceDifficulty = setRaceDifficulty;
     window.startRaceFromButton = startRaceFromButton;
     window.startNewRace = startNewRace;
+    window.toggleAlgorithmRaceMode = toggleAlgorithmRaceMode;
+    window.setAlgorithm1 = setAlgorithm1;
+    window.setAlgorithm2 = setAlgorithm2;
+    window.setExecutionMode = setExecutionMode;
+    window.startAlgorithmRaceFromButton = startAlgorithmRaceFromButton;
 }
 
 /**
@@ -204,67 +285,40 @@ function handleNodeClick(nodeId) {
         // Check if path is complete
         if (nodeId === graphData.endNode) {
             const userDistance = calculatePathWeight(userPath, graphData.nodes);
-            
-            // Update race mode stats if active
-            if (raceMode && raceStartTime) {
-                const userTime = ((Date.now() - raceStartTime) / 1000).toFixed(1);
-                if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
-                if (raceUserTimeEl) raceUserTimeEl.textContent = userTime + 's';
-
-                // Check race result if algorithm is also complete
-                if (raceAlgoComplete && raceAlgoDistance !== null) {
-                    checkRaceResult();
-                } else {
-                    if (statusMsgEl) {
-                        statusMsgEl.innerText = "Waiting for algorithm to finish...";
-                        statusMsgEl.style.color = "#aaa";
-                    }
-                }
-            } else {
-                // Normal mode completion message
-                let message = "Path Complete! ";
+            if (statusMsgEl) {
                 if (optimalDistance !== null) {
-                    if (userDistance === optimalDistance) {
-                        message += "Perfect! You found the optimal path!";
+                    const diff = userDistance - optimalDistance;
+                    if (diff === 0) {
+                        statusMsgEl.innerText = "Perfect! You found the optimal path!";
                         statusMsgEl.style.color = "#4CAF50";
                     } else {
-                        const difference = userDistance - optimalDistance;
-                        message += `You were ${difference} unit${difference !== 1 ? 's' : ''} longer than optimal.`;
-                        statusMsgEl.style.color = "#FF9800";
+                        statusMsgEl.innerText = `Path complete! You were ${diff} units longer than optimal.`;
+                        statusMsgEl.style.color = "#FFD700";
                     }
                 } else {
-                    message += "Check your score.";
+                    statusMsgEl.innerText = `Path complete! Distance: ${userDistance}`;
                     statusMsgEl.style.color = "#4CAF50";
                 }
-                if (statusMsgEl) statusMsgEl.innerText = message;
             }
-        } else if (raceMode && raceStartTime) {
-            // Update race stats in real-time
-            const userDistance = calculatePathWeight(userPath, graphData.nodes);
-            const userTime = ((Date.now() - raceStartTime) / 1000).toFixed(1);
-            if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
-            if (raceUserTimeEl) raceUserTimeEl.textContent = userTime + 's';
         }
     }
 }
 
 /**
- * Deep clone graph data for race mode
+ * Clone graph data for race mode
  */
 function cloneGraphData(graphData) {
-    // Clone nodes
-    const clonedNodes = graphData.nodes.map(node => {
-        const clonedNode = {
-            id: node.id,
-            label: node.label,
-            x: node.x,
-            y: node.y,
-            neighbors: node.neighbors.map(n => ({ id: n.id, weight: n.weight }))
-        };
-        return clonedNode;
-    });
+    const clonedNodes = graphData.nodes.map(node => ({
+        id: node.id,
+        label: node.label,
+        x: node.x,
+        y: node.y,
+        neighbors: node.neighbors.map(edge => ({
+            id: edge.id,
+            weight: edge.weight
+        }))
+    }));
 
-    // Clone edges
     const clonedEdges = graphData.edges.map(edge => ({
         from: edge.from,
         to: edge.to,
@@ -378,24 +432,21 @@ function toggleRaceMode() {
  * Set race difficulty
  */
 function setRaceDifficulty(difficulty) {
-    if (!['easy', 'medium', 'hard'].includes(difficulty)) return;
-    
     raceDifficulty = difficulty;
     
-    // Update button styles
-    document.querySelectorAll('.difficulty-btn').forEach(btn => {
+    // Update button states
+    const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+    difficultyBtns.forEach(btn => {
         if (btn.dataset.difficulty === difficulty) {
             btn.classList.add('active');
         } else {
             btn.classList.remove('active');
         }
     });
-    
-    // Don't auto-restart - user must click Start Race button
 }
 
 /**
- * Start race from button click - generates new graph and starts race
+ * Start race from button click
  * Also handles "New Race" functionality when race is complete
  */
 function startRaceFromButton() {
@@ -406,8 +457,7 @@ function startRaceFromButton() {
         startNewRace();
         return;
     }
-    
-    // If race already started, do nothing
+
     if (raceStarted) return;
     
     // Disable start button
@@ -478,6 +528,7 @@ async function startRace() {
     if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = '?';
 
     // Render both canvases with new graph
+    // Note: render() will show the graph on user canvas, renderRace() will show on algorithm canvas
     render();
     renderRace();
 
@@ -514,7 +565,6 @@ async function startRace() {
         checkRaceResult();
     };
 
-    // Run algorithm with visualization at selected speed
     await dijkstraAnimated(
         raceGraphData.nodes,
         raceGraphData.startNode,
@@ -526,49 +576,45 @@ async function startRace() {
 }
 
 /**
- * Check race result and show win/loss message in race stats
+ * Check race result and display winner
  */
 function checkRaceResult() {
-    if (!raceMode || !raceStarted || !raceAlgoComplete) return;
+    if (!raceAlgoComplete) return;
     
     const userDistance = calculatePathWeight(userPath, graphData.nodes);
     const userTime = raceStartTime ? ((Date.now() - raceStartTime) / 1000).toFixed(1) : '0.0';
     
-    // Only show result if user has completed their path
-    if (userPath[userPath.length - 1] !== graphData.endNode) return;
+    if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
+    if (raceUserTimeEl) raceUserTimeEl.textContent = userTime + 's';
     
-    if (!raceResultSection || !raceResultTitleEl || !raceResultMessageEl) return;
-    
-    // Determine winner
-    let title = '';
-    let message = '';
-    let titleColor = '';
-    
-    if (userDistance < raceAlgoDistance) {
-        title = 'You Won! 🎉';
-        titleColor = '#4CAF50';
-        const difference = raceAlgoDistance - userDistance;
-        message = `Your path was ${difference} unit${difference !== 1 ? 's' : ''} shorter! (${userDistance} vs ${raceAlgoDistance})`;
-    } else if (userDistance === raceAlgoDistance) {
-        title = 'Tie! 🤝';
-        titleColor = '#FFD700';
-        message = `Both found the optimal path! (Distance: ${userDistance})`;
-    } else {
-        title = 'You Lost 😔';
-        titleColor = '#F44336';
-        const difference = userDistance - raceAlgoDistance;
-        message = `Algorithm found a shorter path by ${difference} unit${difference !== 1 ? 's' : ''}. (You: ${userDistance}, Algorithm: ${raceAlgoDistance})`;
-    }
-    
-    raceResultTitleEl.textContent = title;
-    raceResultTitleEl.style.color = titleColor;
-    raceResultMessageEl.textContent = message;
-    raceResultSection.style.display = 'block';
-    
-    // Update button to "New Race"
-    if (startRaceBtn) {
-        startRaceBtn.disabled = false;
-        startRaceBtn.textContent = 'New Race';
+    // Only show result if user has completed path
+    if (userPath.length > 0 && userPath[userPath.length - 1] === graphData.endNode) {
+        if (raceResultSection) {
+            raceResultSection.style.display = 'block';
+        }
+        
+        if (userDistance < raceAlgoDistance) {
+            if (raceResultTitleEl) raceResultTitleEl.textContent = 'You Won!';
+            if (raceResultMessageEl) {
+                raceResultMessageEl.textContent = `You found a shorter path (${userDistance} vs ${raceAlgoDistance})!`;
+            }
+        } else if (userDistance === raceAlgoDistance) {
+            if (raceResultTitleEl) raceResultTitleEl.textContent = 'Tie!';
+            if (raceResultMessageEl) {
+                raceResultMessageEl.textContent = `Both found optimal path (${userDistance})!`;
+            }
+        } else {
+            if (raceResultTitleEl) raceResultTitleEl.textContent = 'You Lost';
+            if (raceResultMessageEl) {
+                raceResultMessageEl.textContent = `Algorithm found shorter path (${raceAlgoDistance} vs ${userDistance})`;
+            }
+        }
+        
+        // Update button to "New Race"
+        if (startRaceBtn) {
+            startRaceBtn.disabled = false;
+            startRaceBtn.textContent = 'New Race';
+        }
     }
 }
 
@@ -683,18 +729,49 @@ function generateNewGraph() {
 }
 
 /**
- * Calculate cumulative costs for user path nodes
+ * Update UI elements
+ */
+function updateUI() {
+    if (!graphData) return;
+
+    // Calculate current path distance
+    const currentDistance = userPath.length > 1 
+        ? calculatePathWeight(userPath, graphData.nodes)
+        : 0;
+
+    if (currentDistEl) {
+        currentDistEl.textContent = currentDistance;
+    }
+
+    // Update race mode UI if active
+    if (raceMode && raceStarted) {
+        const userDistance = calculatePathWeight(userPath, graphData.nodes);
+        const userTime = raceStartTime ? ((Date.now() - raceStartTime) / 1000).toFixed(1) : '0.0';
+        
+        if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
+        if (raceUserTimeEl) raceUserTimeEl.textContent = userTime + 's';
+        
+        // Check result if algorithm is complete
+        if (raceAlgoComplete) {
+            checkRaceResult();
+        }
+    }
+}
+
+/**
+ * Calculate cumulative costs for user path
  */
 function calculateUserPathCosts() {
     userPathCosts = {};
-    if (!graphData || userPath.length === 0) return;
+    if (userPath.length === 0 || !graphData) return;
     
     let cumulativeCost = 0;
-    userPathCosts[userPath[0]] = 0; // Start node has cost 0
+    userPathCosts[userPath[0]] = cumulativeCost;
     
     for (let i = 0; i < userPath.length - 1; i++) {
-        const currentNode = graphData.nodes[userPath[i]];
+        const currentNodeId = userPath[i];
         const nextNodeId = userPath[i + 1];
+        const currentNode = graphData.nodes[currentNodeId];
         const neighbor = currentNode.neighbors.find(n => n.id === nextNodeId);
         
         if (neighbor) {
@@ -761,65 +838,25 @@ async function runDijkstraVisualization() {
             optimalDistance = result.distance;
             
             if (targetDistEl) {
-                targetDistEl.textContent = result.distance;
+                targetDistEl.textContent = optimalDistance;
             }
-            
-            statusMsgEl.innerText = `Optimal path found! Distance: ${result.distance}`;
-            statusMsgEl.style.color = "#4CAF50";
             
             // Show the optimal path with final distances
             render();
         } else {
             statusMsgEl.innerText = "No path found between start and end nodes.";
             statusMsgEl.style.color = "#F44336";
-            optimalPath = [];
-            optimalDistance = null;
         }
     };
 
-    // Run animated algorithm with slower delay for better visibility
     await dijkstraAnimated(
         graphData.nodes,
         graphData.startNode,
         graphData.endNode,
         onStep,
         onComplete,
-        450 // Increased from 300ms for better visibility
+        300
     );
-
-    // Final render without highlight but keep distances
-    animationHighlight = null;
-    animationVisited = [];
-    // Keep animationDistances for final display
-    render();
-}
-
-/**
- * Update UI elements
- */
-function updateUI() {
-    if (!graphData) return;
-
-    // Calculate user path distance
-    const userDistance = calculatePathWeight(userPath, graphData.nodes);
-    if (currentDistEl) {
-        currentDistEl.textContent = userDistance;
-    }
-
-    // Update race mode stats if active
-    if (raceMode && raceStartTime) {
-        const userTime = ((Date.now() - raceStartTime) / 1000).toFixed(1);
-        if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
-        if (raceUserTimeEl) raceUserTimeEl.textContent = userTime + 's';
-    }
-
-    // Reset status message if path is incomplete
-    if (userPath[userPath.length - 1] !== graphData.endNode) {
-        if (statusMsgEl) {
-            statusMsgEl.innerText = raceMode ? "Race in progress! Find the shortest path." : "Select neighbors to move.";
-            statusMsgEl.style.color = "#aaa";
-        }
-    }
 }
 
 /**
@@ -882,6 +919,472 @@ try {
     }
 } catch (error) {
     console.error('Error initializing game:', error);
-    alert('Error loading game. Please check the browser console for details.\n\nMake sure you are running this from a web server (not file://).\nYou can use: python3 -m http.server 8000');
 }
 
+/**
+ * Toggle algorithm race mode on/off
+ */
+function toggleAlgorithmRaceMode() {
+    algoRaceMode = !algoRaceMode;
+
+    if (algoRaceMode) {
+        // Enable algorithm race mode
+        if (algo1CanvasSection) {
+            algo1CanvasSection.style.display = 'block';
+        }
+        if (algo2CanvasSection) {
+            algo2CanvasSection.style.display = 'block';
+        }
+        if (algoRaceStatsEl) {
+            algoRaceStatsEl.style.display = 'flex';
+        }
+        if (canvasContainer) {
+            canvasContainer.classList.add('algo-race-mode');
+        }
+        if (algoRaceBtn) {
+            algoRaceBtn.textContent = 'Exit Algorithm Race';
+            algoRaceBtn.style.background = '#F44336';
+        }
+
+        // Reset algorithm race state
+        algoRaceStarted = false;
+        algoRaceGraphData = null;
+        algo1Result = null;
+        algo2Result = null;
+        algo1StartTime = null;
+        algo2StartTime = null;
+        algo1Complete = false;
+        algo2Complete = false;
+        algo1AnimationHighlight = null;
+        algo1AnimationVisited = [];
+        algo1AnimationDistances = {};
+        algo1FinalDistances = {};
+        algo2AnimationHighlight = null;
+        algo2AnimationVisited = [];
+        algo2AnimationDistances = {};
+        algo2FinalDistances = {};
+
+        // Reset UI
+        if (algo1DistEl) algo1DistEl.textContent = '?';
+        if (algo1TimeEl) algo1TimeEl.textContent = '?';
+        if (algo2DistEl) algo2DistEl.textContent = '?';
+        if (algo2TimeEl) algo2TimeEl.textContent = '?';
+        if (startAlgoRaceBtn) {
+            startAlgoRaceBtn.disabled = false;
+            startAlgoRaceBtn.textContent = 'Start Race';
+        }
+        if (algoRaceResultSection) {
+            algoRaceResultSection.style.display = 'none';
+        }
+
+        // Update canvas labels
+        if (algo1CanvasLabel) {
+            algo1CanvasLabel.textContent = getAlgorithmName(selectedAlgo1);
+        }
+        if (algo2CanvasLabel) {
+            algo2CanvasLabel.textContent = getAlgorithmName(selectedAlgo2);
+        }
+
+        // Show black canvases
+        renderAlgorithmRace();
+    } else {
+        // Disable algorithm race mode
+        if (algo1CanvasSection) {
+            algo1CanvasSection.style.display = 'none';
+        }
+        if (algo2CanvasSection) {
+            algo2CanvasSection.style.display = 'none';
+        }
+        if (algoRaceStatsEl) {
+            algoRaceStatsEl.style.display = 'none';
+        }
+        if (canvasContainer) {
+            canvasContainer.classList.remove('algo-race-mode');
+        }
+        if (algoRaceBtn) {
+            algoRaceBtn.textContent = 'Algorithm Race';
+            algoRaceBtn.style.background = '#2196F3';
+        }
+        if (algoRaceResultSection) {
+            algoRaceResultSection.style.display = 'none';
+        }
+
+        algoRaceGraphData = null;
+    }
+
+    renderAlgorithmRace();
+}
+
+/**
+ * Get algorithm display name
+ */
+function getAlgorithmName(algoKey) {
+    const names = {
+        'dijkstra': 'Dijkstra',
+        'astar': 'A*',
+        'bfs': 'BFS',
+        'dfs': 'DFS',
+        'greedy': 'Greedy'
+    };
+    return names[algoKey] || algoKey;
+}
+
+/**
+ * Set algorithm 1
+ */
+function setAlgorithm1(algoName) {
+    selectedAlgo1 = algoName;
+    if (algo1CanvasLabel) {
+        algo1CanvasLabel.textContent = getAlgorithmName(algoName);
+    }
+}
+
+/**
+ * Set algorithm 2
+ */
+function setAlgorithm2(algoName) {
+    selectedAlgo2 = algoName;
+    if (algo2CanvasLabel) {
+        algo2CanvasLabel.textContent = getAlgorithmName(algoName);
+    }
+}
+
+/**
+ * Set execution mode
+ */
+function setExecutionMode(mode) {
+    executionMode = mode;
+    
+    // Update button states
+    const modeBtns = document.querySelectorAll('.execution-mode-btn');
+    modeBtns.forEach(btn => {
+        if (btn.dataset.mode === mode) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
+/**
+ * Start algorithm race from button
+ */
+function startAlgorithmRaceFromButton() {
+    if (!algoRaceMode) return;
+    
+    // If race is complete, start new race
+    if (algoRaceStarted && algo1Complete && algo2Complete) {
+        startNewAlgorithmRace();
+        return;
+    }
+
+    if (algoRaceStarted) return;
+    
+    // Disable start button
+    if (startAlgoRaceBtn) {
+        startAlgoRaceBtn.disabled = true;
+        startAlgoRaceBtn.textContent = 'Race Started';
+    }
+    
+    // Generate new graph and start race
+    generateAlgorithmRaceGraph();
+}
+
+/**
+ * Generate graph for algorithm race
+ */
+function generateAlgorithmRaceGraph() {
+    if (!algoRaceMode) return;
+    
+    // Show loading message
+    if (statusMsgEl) {
+        statusMsgEl.innerText = "Generating algorithm race graph...";
+        statusMsgEl.style.color = "#aaa";
+    }
+
+    // Generate new graph
+    algoRaceGraphData = generateGraph({
+        nodeCount: DEFAULT_NODE_COUNT,
+        connectivityRadius: DEFAULT_CONNECTIVITY_RADIUS,
+        canvasWidth: algo1Canvas ? algo1Canvas.width : 800,
+        canvasHeight: algo1Canvas ? algo1Canvas.height : 500
+    });
+
+    // Start the race
+    algoRaceStarted = true;
+    startAlgorithmRace();
+}
+
+/**
+ * Start algorithm race
+ */
+async function startAlgorithmRace() {
+    if (!algoRaceMode || !algoRaceGraphData || !algoRaceStarted) return;
+
+    // Reset state
+    algo1Result = null;
+    algo2Result = null;
+    algo1StartTime = null;
+    algo2StartTime = null;
+    algo1Complete = false;
+    algo2Complete = false;
+    algo1AnimationHighlight = null;
+    algo1AnimationVisited = [];
+    algo1AnimationDistances = {};
+    algo1FinalDistances = {};
+    algo2AnimationHighlight = null;
+    algo2AnimationVisited = [];
+    algo2AnimationDistances = {};
+    algo2FinalDistances = {};
+
+    // Reset UI
+    if (algo1DistEl) algo1DistEl.textContent = '?';
+    if (algo1TimeEl) algo1TimeEl.textContent = '?';
+    if (algo2DistEl) algo2DistEl.textContent = '?';
+    if (algo2TimeEl) algo2TimeEl.textContent = '?';
+
+    // Render both canvases with new graph
+    renderAlgorithmRace();
+
+    if (executionMode === 'simultaneous') {
+        await runSimultaneousRace();
+    } else {
+        await runSequentialRace();
+    }
+}
+
+/**
+ * Run simultaneous race (both algorithms at same time)
+ */
+async function runSimultaneousRace() {
+    const algo1Promise = runAlgorithm(selectedAlgo1, 1);
+    const algo2Promise = runAlgorithm(selectedAlgo2, 2);
+    
+    await Promise.all([algo1Promise, algo2Promise]);
+    
+    checkAlgorithmRaceResult();
+}
+
+/**
+ * Run sequential race (algorithms one after another)
+ */
+async function runSequentialRace() {
+    await runAlgorithm(selectedAlgo1, 1);
+    await runAlgorithm(selectedAlgo2, 2);
+    
+    checkAlgorithmRaceResult();
+}
+
+/**
+ * Run a single algorithm
+ */
+async function runAlgorithm(algoName, algoNumber) {
+    const startTime = Date.now();
+    let result = null;
+    
+    if (algoNumber === 1) {
+        algo1StartTime = startTime;
+    } else {
+        algo2StartTime = startTime;
+    }
+
+    const onStep = (currentNode, visited, distances) => {
+        if (algoNumber === 1) {
+            algo1AnimationHighlight = currentNode;
+            algo1AnimationVisited = visited;
+            algo1AnimationDistances = distances;
+        } else {
+            algo2AnimationHighlight = currentNode;
+            algo2AnimationVisited = visited;
+            algo2AnimationDistances = distances;
+        }
+        renderAlgorithmRace();
+    };
+
+    const onComplete = (algoResult) => {
+        const endTime = Date.now();
+        const time = ((endTime - startTime) / 1000).toFixed(1);
+        
+        if (algoNumber === 1) {
+            algo1Result = algoResult;
+            algo1Complete = true;
+            algo1FinalDistances = algo1AnimationDistances;
+            algo1AnimationHighlight = null;
+            algo1AnimationVisited = [];
+            if (algo1DistEl) algo1DistEl.textContent = algoResult.distance || '?';
+            if (algo1TimeEl) algo1TimeEl.textContent = time + 's';
+        } else {
+            algo2Result = algoResult;
+            algo2Complete = true;
+            algo2FinalDistances = algo2AnimationDistances;
+            algo2AnimationHighlight = null;
+            algo2AnimationVisited = [];
+            if (algo2DistEl) algo2DistEl.textContent = algoResult.distance || '?';
+            if (algo2TimeEl) algo2TimeEl.textContent = time + 's';
+        }
+        
+        renderAlgorithmRace();
+    };
+
+    // Get the appropriate algorithm function
+    const algoFunction = getAlgorithmFunction(algoName);
+    
+    await algoFunction(
+        algoRaceGraphData.nodes,
+        algoRaceGraphData.startNode,
+        algoRaceGraphData.endNode,
+        onStep,
+        onComplete,
+        ALGO_RACE_SPEED
+    );
+}
+
+/**
+ * Get algorithm function by name
+ */
+function getAlgorithmFunction(algoName) {
+    const algorithms = {
+        'dijkstra': dijkstraAnimated,
+        'astar': aStarAnimated,
+        'bfs': bfsAnimated,
+        'dfs': dfsAnimated,
+        'greedy': greedyBestFirstAnimated
+    };
+    return algorithms[algoName] || dijkstraAnimated;
+}
+
+/**
+ * Check algorithm race result and display winner
+ */
+function checkAlgorithmRaceResult() {
+    if (!algo1Complete || !algo2Complete) return;
+    
+    if (algoRaceResultSection) {
+        algoRaceResultSection.style.display = 'block';
+    }
+    
+    const dist1 = algo1Result.distance;
+    const dist2 = algo2Result.distance;
+    
+    // Handle cases where no path was found
+    if (dist1 === null && dist2 === null) {
+        if (algoRaceResultTitleEl) algoRaceResultTitleEl.textContent = 'Tie - No Path';
+        if (algoRaceResultMessageEl) {
+            algoRaceResultMessageEl.textContent = 'Both algorithms failed to find a path.';
+        }
+    } else if (dist1 === null) {
+        if (algoRaceResultTitleEl) algoRaceResultTitleEl.textContent = getAlgorithmName(selectedAlgo2) + ' Won!';
+        if (algoRaceResultMessageEl) {
+            algoRaceResultMessageEl.textContent = `${getAlgorithmName(selectedAlgo1)} found no path. ${getAlgorithmName(selectedAlgo2)} found path with cost ${dist2}.`;
+        }
+    } else if (dist2 === null) {
+        if (algoRaceResultTitleEl) algoRaceResultTitleEl.textContent = getAlgorithmName(selectedAlgo1) + ' Won!';
+        if (algoRaceResultMessageEl) {
+            algoRaceResultMessageEl.textContent = `${getAlgorithmName(selectedAlgo2)} found no path. ${getAlgorithmName(selectedAlgo1)} found path with cost ${dist1}.`;
+        }
+    } else if (dist1 < dist2) {
+        if (algoRaceResultTitleEl) algoRaceResultTitleEl.textContent = getAlgorithmName(selectedAlgo1) + ' Won!';
+        if (algoRaceResultMessageEl) {
+            algoRaceResultMessageEl.textContent = `${getAlgorithmName(selectedAlgo1)} found shorter path (${dist1} vs ${dist2}).`;
+        }
+    } else if (dist2 < dist1) {
+        if (algoRaceResultTitleEl) algoRaceResultTitleEl.textContent = getAlgorithmName(selectedAlgo2) + ' Won!';
+        if (algoRaceResultMessageEl) {
+            algoRaceResultMessageEl.textContent = `${getAlgorithmName(selectedAlgo2)} found shorter path (${dist2} vs ${dist1}).`;
+        }
+    } else {
+        if (algoRaceResultTitleEl) algoRaceResultTitleEl.textContent = 'Tie!';
+        if (algoRaceResultMessageEl) {
+            algoRaceResultMessageEl.textContent = `Both algorithms found optimal path (${dist1}).`;
+        }
+    }
+    
+    // Update button to "New Race"
+    if (startAlgoRaceBtn) {
+        startAlgoRaceBtn.disabled = false;
+        startAlgoRaceBtn.textContent = 'New Race';
+    }
+}
+
+/**
+ * Start a new algorithm race
+ */
+function startNewAlgorithmRace() {
+    if (!algoRaceMode) return;
+    
+    // Hide result
+    if (algoRaceResultSection) {
+        algoRaceResultSection.style.display = 'none';
+    }
+    
+    // Reset race state
+    algoRaceStarted = false;
+    algoRaceGraphData = null;
+    algo1Result = null;
+    algo2Result = null;
+    algo1StartTime = null;
+    algo2StartTime = null;
+    algo1Complete = false;
+    algo2Complete = false;
+    algo1AnimationHighlight = null;
+    algo1AnimationVisited = [];
+    algo1AnimationDistances = {};
+    algo1FinalDistances = {};
+    algo2AnimationHighlight = null;
+    algo2AnimationVisited = [];
+    algo2AnimationDistances = {};
+    algo2FinalDistances = {};
+    
+    // Reset UI
+    if (algo1DistEl) algo1DistEl.textContent = '?';
+    if (algo1TimeEl) algo1TimeEl.textContent = '?';
+    if (algo2DistEl) algo2DistEl.textContent = '?';
+    if (algo2TimeEl) algo2TimeEl.textContent = '?';
+    if (startAlgoRaceBtn) {
+        startAlgoRaceBtn.disabled = false;
+        startAlgoRaceBtn.textContent = 'Start Race';
+    }
+    if (statusMsgEl) {
+        statusMsgEl.innerText = 'Select algorithms and click Start Race';
+        statusMsgEl.style.color = '#aaa';
+    }
+    
+    // Show black canvases
+    renderAlgorithmRace();
+}
+
+/**
+ * Render algorithm race canvases
+ */
+function renderAlgorithmRace() {
+    if (!algoRaceMode) return;
+    
+    // If race hasn't started, show black canvases
+    if (!algoRaceStarted || !algoRaceGraphData) {
+        if (algo1Renderer) algo1Renderer.clear();
+        if (algo2Renderer) algo2Renderer.clear();
+        return;
+    }
+    
+    // Render algorithm 1 canvas
+    if (algo1Renderer) {
+        if (algo1Complete && algo1Result && algo1Result.path) {
+            const distancesToShow = Object.keys(algo1FinalDistances).length > 0 ? algo1FinalDistances : algo1AnimationDistances;
+            algo1Renderer.draw(algoRaceGraphData, [], [], [], algo1Result.path, {}, distancesToShow);
+        } else {
+            const highlightNodes = algo1AnimationHighlight !== null ? [algo1AnimationHighlight] : [];
+            algo1Renderer.draw(algoRaceGraphData, [], highlightNodes, algo1AnimationVisited, [], {}, algo1AnimationDistances);
+        }
+    }
+    
+    // Render algorithm 2 canvas
+    if (algo2Renderer) {
+        if (algo2Complete && algo2Result && algo2Result.path) {
+            const distancesToShow = Object.keys(algo2FinalDistances).length > 0 ? algo2FinalDistances : algo2AnimationDistances;
+            algo2Renderer.draw(algoRaceGraphData, [], [], [], algo2Result.path, {}, distancesToShow);
+        } else {
+            const highlightNodes = algo2AnimationHighlight !== null ? [algo2AnimationHighlight] : [];
+            algo2Renderer.draw(algoRaceGraphData, [], highlightNodes, algo2AnimationVisited, [], {}, algo2AnimationDistances);
+        }
+    }
+}

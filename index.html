@@ -14,6 +14,7 @@
         <button class="secondary" onclick="resetProgress()">Reset Path</button>
         <button class="secondary" id="algoBtn" onclick="runDijkstraAnimation()">Visualize Dijkstra</button>
         <button class="secondary" id="raceBtn" onclick="toggleRaceMode()">Race Mode</button>
+        <button class="secondary" id="algoRaceBtn" onclick="toggleAlgorithmRaceMode()">Algorithm Race</button>
     </div>
 
     <div class="stats">
@@ -49,6 +50,46 @@
         </div>
     </div>
 
+    <!-- Algorithm race mode stats -->
+    <div class="race-stats" id="algoRaceStats" style="display: none;">
+        <div class="race-section">
+            <h3>Algorithm 1</h3>
+            <select id="algo1Select" class="algo-select" onchange="setAlgorithm1(this.value)">
+                <option value="dijkstra">Dijkstra</option>
+                <option value="astar">A*</option>
+                <option value="bfs">BFS</option>
+                <option value="dfs">DFS</option>
+                <option value="greedy">Greedy</option>
+            </select>
+            <div class="stat-box">Distance: <span id="algo1Dist" class="val">?</span></div>
+            <div class="stat-box">Time: <span id="algo1Time" class="val">?</span></div>
+        </div>
+        <div class="race-section">
+            <h3>Algorithm 2</h3>
+            <select id="algo2Select" class="algo-select" onchange="setAlgorithm2(this.value)">
+                <option value="dijkstra">Dijkstra</option>
+                <option value="astar" selected>A*</option>
+                <option value="bfs">BFS</option>
+                <option value="dfs">DFS</option>
+                <option value="greedy">Greedy</option>
+            </select>
+            <div class="stat-box">Distance: <span id="algo2Dist" class="val">?</span></div>
+            <div class="stat-box">Time: <span id="algo2Time" class="val">?</span></div>
+        </div>
+        <div class="race-section">
+            <h3>Execution Mode</h3>
+            <div class="execution-mode-selector">
+                <button class="execution-mode-btn active" data-mode="simultaneous" onclick="setExecutionMode('simultaneous')">Simultaneous</button>
+                <button class="execution-mode-btn" data-mode="sequential" onclick="setExecutionMode('sequential')">Sequential</button>
+            </div>
+            <button id="startAlgoRaceBtn" class="start-race-btn" onclick="startAlgorithmRaceFromButton()">Start Race</button>
+        </div>
+        <div class="race-section" id="algoRaceResultSection" style="display: none;">
+            <h3 id="algoRaceResultTitle"></h3>
+            <p id="algoRaceResultMessage" style="margin: 8px 0; color: #eee; font-size: 0.9rem;"></p>
+        </div>
+    </div>
+
     <br>
     <div id="canvasContainer">
         <div class="canvas-section">
@@ -58,6 +99,14 @@
         <div class="canvas-section" id="raceCanvasSection" style="display: none;">
             <h3>Algorithm</h3>
             <canvas id="raceCanvas" width="800" height="500"></canvas>
+        </div>
+        <div class="canvas-section" id="algo1CanvasSection" style="display: none;">
+            <h3 id="algo1CanvasLabel">Algorithm 1</h3>
+            <canvas id="algo1Canvas" width="800" height="500"></canvas>
+        </div>
+        <div class="canvas-section" id="algo2CanvasSection" style="display: none;">
+            <h3 id="algo2CanvasLabel">Algorithm 2</h3>
+            <canvas id="algo2Canvas" width="800" height="500"></canvas>
         </div>
     </div>
 
