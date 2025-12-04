@@ -10,6 +10,8 @@ import { dijkstraAnimated, calculatePathWeight } from './algorithms.js';
 // Game state
 let graphData = null;
 let userPath = [];
+let optimalPath = []; // Store optimal path from Dijkstra
+let optimalDistance = null; // Store optimal distance
 let isAnimating = false;
 let renderer = null;
 
@@ -64,6 +66,28 @@ function setupEventListeners() {
     // Canvas click handler
     canvas.addEventListener('mousedown', handleCanvasClick);
 
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (isAnimating) return;
+        
+        // Don't trigger shortcuts when typing in input fields
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
+        switch (e.key.toLowerCase()) {
+            case 'n':
+                generateNewGraph();
+                break;
+            case 'r':
+                resetUserPath();
+                break;
+            case 'd':
+                runDijkstraVisualization();
+                break;
+        }
+    });
+
     // Make functions available globally for onclick handlers
     window.generateGraph = generateNewGraph;
     window.resetProgress = resetUserPath;
@@ -114,8 +138,24 @@ function handleNodeClick(nodeId) {
 
         // Check if path is complete
         if (nodeId === graphData.endNode) {
-            statusMsgEl.innerText = "Path Complete! Check your score.";
-            statusMsgEl.style.color = "#4CAF50";
+            const userDistance = calculatePathWeight(userPath, graphData.nodes);
+            let message = "Path Complete! ";
+            
+            if (optimalDistance !== null) {
+                if (userDistance === optimalDistance) {
+                    message += "Perfect! You found the optimal path!";
+                    statusMsgEl.style.color = "#4CAF50";
+                } else {
+                    const difference = userDistance - optimalDistance;
+                    message += `You were ${difference} unit${difference !== 1 ? 's' : ''} longer than optimal.`;
+                    statusMsgEl.style.color = "#FF9800";
+                }
+            } else {
+                message += "Check your score.";
+                statusMsgEl.style.color = "#4CAF50";
+            }
+            
+            statusMsgEl.innerText = message;
         }
     }
 }
@@ -124,6 +164,12 @@ function handleNodeClick(nodeId) {
  * Generate a new graph
  */
 function generateNewGraph() {
+    // Show loading message
+    if (statusMsgEl) {
+        statusMsgEl.innerText = "Generating graph...";
+        statusMsgEl.style.color = "#aaa";
+    }
+
     graphData = generateGraph({
         nodeCount: DEFAULT_NODE_COUNT,
         connectivityRadius: DEFAULT_CONNECTIVITY_RADIUS,
@@ -132,10 +178,16 @@ function generateNewGraph() {
     });
 
     userPath = [graphData.startNode];
+    optimalPath = [];
+    optimalDistance = null;
     isAnimating = false;
     
     if (algoBtn) {
         algoBtn.disabled = false;
+    }
+
+    if (targetDistEl) {
+        targetDistEl.textContent = "?";
     }
 
     updateUI();
@@ -169,6 +221,8 @@ async function runDijkstraVisualization() {
     // Reset animation state
     animationHighlight = null;
     animationVisited = [];
+    optimalPath = [];
+    optimalDistance = null;
 
     // Step callback for visualization
     const onStep = (currentNode, visited, distances) => {
@@ -185,26 +239,34 @@ async function runDijkstraVisualization() {
         }
 
         if (result.path.length > 0 && result.distance !== null) {
-            targetDistEl.textContent = result.distance;
+            optimalPath = result.path;
+            optimalDistance = result.distance;
+            
+            if (targetDistEl) {
+                targetDistEl.textContent = result.distance;
+            }
+            
             statusMsgEl.innerText = `Optimal path found! Distance: ${result.distance}`;
             statusMsgEl.style.color = "#4CAF50";
             
             // Show the optimal path
-            render(result.path);
+            render();
         } else {
             statusMsgEl.innerText = "No path found between start and end nodes.";
             statusMsgEl.style.color = "#F44336";
+            optimalPath = [];
+            optimalDistance = null;
         }
     };
 
-    // Run animated algorithm
+    // Run animated algorithm with slower delay for better visibility
     await dijkstraAnimated(
         graphData.nodes,
         graphData.startNode,
         graphData.endNode,
         onStep,
         onComplete,
-        300
+        450 // Increased from 300ms for better visibility
     );
 
     // Final render without highlight
@@ -232,14 +294,14 @@ function updateUI() {
 
 /**
  * Render the graph
- * @param {Array} optimalPath - Optional optimal path to highlight
  */
-function render(optimalPath = null) {
+function render() {
     if (!graphData || !renderer) return;
 
     // Determine which nodes to highlight
     let highlightNodes = [];
     let visitedNodes = [];
+    let pathToShow = [];
 
     // If we're animating, use current animation state
     if (isAnimating) {
@@ -247,16 +309,17 @@ function render(optimalPath = null) {
             highlightNodes = [animationHighlight];
         }
         visitedNodes = animationVisited;
-    } else if (optimalPath && optimalPath.length > 0) {
-        // Otherwise, if optimal path is provided, highlight it
-        highlightNodes = optimalPath;
+    } else {
+        // Show optimal path if available
+        pathToShow = optimalPath;
     }
 
     renderer.draw(
         graphData,
         userPath,
         highlightNodes,
-        visitedNodes
+        visitedNodes,
+        pathToShow
     );
 }
 

@@ -12,6 +12,7 @@ export const COLORS = {
     NODE_VISITED: '#554400',      // Visited by algorithm
     NODE_HIGHLIGHT: '#FFD700',    // Active algorithm node
     NODE_USER_PATH: '#2196F3',    // User path (Blue)
+    NODE_OPTIMAL_PATH: '#00FFFF', // Optimal path (Cyan)
     NODE_START: '#4CAF50',        // Start (Green)
     NODE_END: '#F44336',          // End (Red)
     NODE_STROKE: '#fff',
@@ -23,6 +24,7 @@ export const NODE_RADIUS = 15;
 export const NODE_STROKE_WIDTH = 1;
 export const EDGE_WIDTH = 2;
 export const USER_PATH_WIDTH = 5;
+export const OPTIMAL_PATH_WIDTH = 4;
 export const NODE_CLICK_RADIUS = 20;
 export const FONT_SIZE = 12;
 export const FONT_FAMILY = 'Arial';
@@ -115,6 +117,7 @@ export class Renderer {
      * @param {number} state.startNode - ID of start node
      * @param {number} state.endNode - ID of end node
      * @param {Array} state.userPath - Array of node IDs in user's path
+     * @param {Array} state.optimalPath - Array of node IDs in optimal path
      * @param {Array} state.visitedNodes - Array of visited node IDs
      * @param {Array} state.highlightNodes - Array of highlighted node IDs
      */
@@ -123,17 +126,20 @@ export class Renderer {
             startNode = null,
             endNode = null,
             userPath = [],
+            optimalPath = [],
             visitedNodes = [],
             highlightNodes = []
         } = state;
 
-        // Determine node color based on state
+        // Determine node color based on state (priority: start/end > optimal > highlight > visited > user path > default)
         let fillColor = COLORS.NODE_DEFAULT;
         
         if (node.id === startNode) {
             fillColor = COLORS.NODE_START;
         } else if (node.id === endNode) {
             fillColor = COLORS.NODE_END;
+        } else if (optimalPath.includes(node.id)) {
+            fillColor = COLORS.NODE_OPTIMAL_PATH;
         } else if (highlightNodes.includes(node.id)) {
             fillColor = COLORS.NODE_HIGHLIGHT;
         } else if (visitedNodes.includes(node.id)) {
@@ -153,12 +159,12 @@ export class Renderer {
         this.ctx.lineWidth = NODE_STROKE_WIDTH;
         this.ctx.stroke();
 
-        // Draw node label
+        // Draw node label (use letter label instead of numeric ID)
         this.ctx.fillStyle = COLORS.TEXT;
         this.ctx.font = `bold ${FONT_SIZE}px ${FONT_FAMILY}`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(node.id.toString(), node.x, node.y);
+        this.ctx.fillText(node.label || node.id.toString(), node.x, node.y);
     }
 
     /**
@@ -182,8 +188,9 @@ export class Renderer {
      * @param {Array} userPath - User's current path (array of node IDs)
      * @param {Array} highlightNodes - Nodes to highlight (for algorithm visualization)
      * @param {Array} visitedNodes - Nodes visited by algorithm
+     * @param {Array} optimalPath - Optimal path found by algorithm
      */
-    draw(graphData, userPath = [], highlightNodes = [], visitedNodes = []) {
+    draw(graphData, userPath = [], highlightNodes = [], visitedNodes = [], optimalPath = []) {
         this.clear();
 
         const { nodes, edges, startNode, endNode } = graphData;
@@ -191,9 +198,14 @@ export class Renderer {
         // Draw edges first (so they appear behind nodes)
         this.drawEdges(edges, nodes);
 
-        // Draw user path highlight
+        // Draw optimal path (behind user path)
+        if (optimalPath.length > 1) {
+            this.drawPath(optimalPath, nodes, COLORS.NODE_OPTIMAL_PATH, OPTIMAL_PATH_WIDTH);
+        }
+
+        // Draw user path highlight (on top of optimal path)
         if (userPath.length > 1) {
-            this.drawPath(userPath, nodes);
+            this.drawPath(userPath, nodes, COLORS.NODE_USER_PATH, USER_PATH_WIDTH);
         }
 
         // Draw nodes
@@ -201,6 +213,7 @@ export class Renderer {
             startNode,
             endNode,
             userPath,
+            optimalPath,
             visitedNodes,
             highlightNodes
         };
