@@ -834,13 +834,19 @@ function updateUI() {
  * Render the graph
  */
 function render() {
+    if (!renderer) return;
+    
     // In race mode, show black canvas if race hasn't started
     if (raceMode && (!raceStarted || !graphData)) {
-        if (renderer) renderer.clear();
+        renderer.clear();
         return;
     }
     
-    if (!graphData || !renderer) return;
+    // In normal mode, if no graph data, clear canvas
+    if (!graphData) {
+        renderer.clear();
+        return;
+    }
 
     // Determine which nodes to highlight
     let highlightNodes = [];
