@@ -9,7 +9,7 @@ export const DEFAULT_CONNECTIVITY_RADIUS = 180; // Reduced to avoid too many edg
 export const WEIGHT_DIVISOR = 40; // Divide distance by this to get weight (adjusted for single digits)
 export const MIN_START_END_DISTANCE_PERCENT = 0.3; // 30% of canvas diagonal
 export const MIN_NODE_DISTANCE = 60; // Minimum distance between nodes in pixels
-export const MAX_EDGES_PER_NODE = 5; // Maximum number of edges per node to reduce complexity
+export const MAX_EDGES_PER_NODE = 4; // Maximum number of edges per node (3-4 edges)
 export const MIN_EDGES_PER_NODE = 3; // Minimum number of edges per node
 export const WEIGHT_RANDOMNESS = 0.8; // Randomness factor for weights (0-1, higher = more random) - increased for less correlation
 

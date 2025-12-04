@@ -34,6 +34,7 @@ let raceAnimationDistances = {}; // Store distances during race Dijkstra visuali
 let animationHighlight = null;
 let animationVisited = [];
 let animationDistances = {}; // Store distances during Dijkstra visualization
+let finalDistances = {}; // Store final distances after algorithm completes
 
 // DOM elements
 let canvas = null;
@@ -317,11 +318,12 @@ function toggleRaceMode() {
         raceAlgoComplete = false;
         raceAlgoDistance = null;
         raceAlgoTime = null;
-        raceAnimationHighlight = null;
-        raceAnimationVisited = [];
-        raceAnimationDistances = {};
-        userPath = [];
-        userPathCosts = {};
+    raceAnimationHighlight = null;
+    raceAnimationVisited = [];
+    raceAnimationDistances = {};
+    raceFinalDistances = {};
+    userPath = [];
+    userPathCosts = {};
 
         // Reset UI
         if (raceUserDistEl) raceUserDistEl.textContent = '0';
@@ -465,6 +467,7 @@ async function startRace() {
     raceAnimationHighlight = null;
     raceAnimationVisited = [];
     raceAnimationDistances = {};
+    raceFinalDistances = {};
     userPathCosts = {};
 
     // Reset race UI
@@ -497,10 +500,13 @@ async function startRace() {
         if (raceAlgoDistEl) raceAlgoDistEl.textContent = result.distance || '?';
         if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = raceAlgoTime + 's';
 
-        // Clear animation state and show optimal path
+        // Store final distances to keep costs displayed
+        raceFinalDistances = raceAnimationDistances;
+
+        // Clear animation highlight but keep distances
         raceAnimationHighlight = null;
         raceAnimationVisited = [];
-        raceAnimationDistances = {};
+        // Keep raceAnimationDistances for final display
         renderRace(result.path);
         
         // Check if user has completed their path and show result
@@ -619,9 +625,11 @@ function renderRace(optimalPath = null) {
         return;
     }
     
-    // If algorithm is complete, show optimal path
+    // If algorithm is complete, show optimal path with final distances
     if (raceAlgoComplete && optimalPath) {
-        raceRenderer.draw(raceGraphData, [], [], [], optimalPath, {}, {});
+        // Use final distances if available, otherwise use current animation distances
+        const distancesToShow = Object.keys(raceFinalDistances).length > 0 ? raceFinalDistances : raceAnimationDistances;
+        raceRenderer.draw(raceGraphData, [], [], [], optimalPath, {}, distancesToShow);
     } else {
         // Show animation state during algorithm execution
         const highlightNodes = raceAnimationHighlight !== null ? [raceAnimationHighlight] : [];
@@ -731,6 +739,7 @@ async function runDijkstraVisualization() {
     animationHighlight = null;
     animationVisited = [];
     animationDistances = {};
+    finalDistances = {};
     optimalPath = [];
     optimalDistance = null;
 
@@ -750,6 +759,9 @@ async function runDijkstraVisualization() {
             algoBtn.disabled = false;
         }
 
+        // Store final distances to keep costs displayed
+        finalDistances = animationDistances;
+
         if (result.path.length > 0 && result.distance !== null) {
             optimalPath = result.path;
             optimalDistance = result.distance;
@@ -761,7 +773,7 @@ async function runDijkstraVisualization() {
             statusMsgEl.innerText = `Optimal path found! Distance: ${result.distance}`;
             statusMsgEl.style.color = "#4CAF50";
             
-            // Show the optimal path
+            // Show the optimal path with final distances
             render();
         } else {
             statusMsgEl.innerText = "No path found between start and end nodes.";
@@ -781,10 +793,10 @@ async function runDijkstraVisualization() {
         450 // Increased from 300ms for better visibility
     );
 
-    // Final render without highlight
+    // Final render without highlight but keep distances
     animationHighlight = null;
     animationVisited = [];
-    animationDistances = {};
+    // Keep animationDistances for final display
     render();
 }
 
@@ -844,6 +856,10 @@ function render() {
     } else {
         // Show optimal path if available
         pathToShow = optimalPath;
+        // Keep displaying final distances after algorithm completes
+        if (Object.keys(finalDistances).length > 0) {
+            distances = finalDistances;
+        }
     }
 
     renderer.draw(
