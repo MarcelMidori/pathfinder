@@ -52,41 +52,44 @@
 
     <!-- Algorithm race mode stats -->
     <div class="race-stats" id="algoRaceStats" style="display: none;">
-        <div class="race-section">
-            <h3>Algorithm 1</h3>
-            <select id="algo1Select" class="algo-select" onchange="setAlgorithm1(this.value)">
-                <option value="dijkstra">Dijkstra</option>
-                <option value="astar">A*</option>
-                <option value="bfs">BFS</option>
-                <option value="dfs">DFS</option>
-                <option value="greedy">Greedy</option>
-            </select>
-            <div class="stat-box">Distance: <span id="algo1Dist" class="val">?</span></div>
-            <div class="stat-box">Time: <span id="algo1Time" class="val">?</span></div>
-        </div>
-        <div class="race-section">
-            <h3>Algorithm 2</h3>
-            <select id="algo2Select" class="algo-select" onchange="setAlgorithm2(this.value)">
-                <option value="dijkstra">Dijkstra</option>
-                <option value="astar" selected>A*</option>
-                <option value="bfs">BFS</option>
-                <option value="dfs">DFS</option>
-                <option value="greedy">Greedy</option>
-            </select>
-            <div class="stat-box">Distance: <span id="algo2Dist" class="val">?</span></div>
-            <div class="stat-box">Time: <span id="algo2Time" class="val">?</span></div>
-        </div>
-        <div class="race-section">
-            <h3>Execution Mode</h3>
-            <div class="execution-mode-selector">
-                <button class="execution-mode-btn active" data-mode="simultaneous" onclick="setExecutionMode('simultaneous')">Simultaneous</button>
-                <button class="execution-mode-btn" data-mode="sequential" onclick="setExecutionMode('sequential')">Sequential</button>
-            </div>
+        <div class="algo-race-controls">
             <button id="startAlgoRaceBtn" class="start-race-btn" onclick="startAlgorithmRaceFromButton()">Start Race</button>
+            <div class="race-section" id="algoRaceResultSection" style="display: none;">
+                <h3 id="algoRaceResultTitle"></h3>
+                <p id="algoRaceResultMessage" style="margin: 8px 0; color: #eee; font-size: 0.9rem;"></p>
+            </div>
         </div>
-        <div class="race-section" id="algoRaceResultSection" style="display: none;">
-            <h3 id="algoRaceResultTitle"></h3>
-            <p id="algoRaceResultMessage" style="margin: 8px 0; color: #eee; font-size: 0.9rem;"></p>
+        <div class="algo-grid-stats">
+            <div class="algo-stat-item">
+                <h4>Dijkstra</h4>
+                <div class="stat-box">Distance: <span id="algoDijkstraDist" class="val">?</span></div>
+                <div class="stat-box">Time: <span id="algoDijkstraTime" class="val">?</span></div>
+            </div>
+            <div class="algo-stat-item">
+                <h4>A*</h4>
+                <div class="stat-box">Distance: <span id="algoAstarDist" class="val">?</span></div>
+                <div class="stat-box">Time: <span id="algoAstarTime" class="val">?</span></div>
+            </div>
+            <div class="algo-stat-item">
+                <h4>BFS</h4>
+                <div class="stat-box">Distance: <span id="algoBfsDist" class="val">?</span></div>
+                <div class="stat-box">Time: <span id="algoBfsTime" class="val">?</span></div>
+            </div>
+            <div class="algo-stat-item">
+                <h4>DFS</h4>
+                <div class="stat-box">Distance: <span id="algoDfsDist" class="val">?</span></div>
+                <div class="stat-box">Time: <span id="algoDfsTime" class="val">?</span></div>
+            </div>
+            <div class="algo-stat-item">
+                <h4>Greedy</h4>
+                <div class="stat-box">Distance: <span id="algoGreedyDist" class="val">?</span></div>
+                <div class="stat-box">Time: <span id="algoGreedyTime" class="val">?</span></div>
+            </div>
+            <div class="algo-stat-item">
+                <h4>UCS</h4>
+                <div class="stat-box">Distance: <span id="algoUcsDist" class="val">?</span></div>
+                <div class="stat-box">Time: <span id="algoUcsTime" class="val">?</span></div>
+            </div>
         </div>
     </div>
 
@@ -100,13 +103,29 @@
             <h3>Algorithm</h3>
             <canvas id="raceCanvas" width="800" height="500"></canvas>
         </div>
-        <div class="canvas-section" id="algo1CanvasSection" style="display: none;">
-            <h3 id="algo1CanvasLabel">Algorithm 1</h3>
-            <canvas id="algo1Canvas" width="800" height="500"></canvas>
+        <div class="canvas-section" id="algoDijkstraSection" style="display: none;">
+            <h3>Dijkstra</h3>
+            <canvas id="algoDijkstraCanvas" width="400" height="300"></canvas>
         </div>
-        <div class="canvas-section" id="algo2CanvasSection" style="display: none;">
-            <h3 id="algo2CanvasLabel">Algorithm 2</h3>
-            <canvas id="algo2Canvas" width="800" height="500"></canvas>
+        <div class="canvas-section" id="algoAstarSection" style="display: none;">
+            <h3>A*</h3>
+            <canvas id="algoAstarCanvas" width="400" height="300"></canvas>
+        </div>
+        <div class="canvas-section" id="algoBfsSection" style="display: none;">
+            <h3>BFS</h3>
+            <canvas id="algoBfsCanvas" width="400" height="300"></canvas>
+        </div>
+        <div class="canvas-section" id="algoDfsSection" style="display: none;">
+            <h3>DFS</h3>
+            <canvas id="algoDfsCanvas" width="400" height="300"></canvas>
+        </div>
+        <div class="canvas-section" id="algoGreedySection" style="display: none;">
+            <h3>Greedy</h3>
+            <canvas id="algoGreedyCanvas" width="400" height="300"></canvas>
+        </div>
+        <div class="canvas-section" id="algoUcsSection" style="display: none;">
+            <h3>UCS</h3>
+            <canvas id="algoUcsCanvas" width="400" height="300"></canvas>
         </div>
     </div>
 

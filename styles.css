@@ -91,13 +91,86 @@ button:disabled {
 }
 
 #canvasContainer.algo-race-mode {
-    flex-direction: row;
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 15px;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
 #canvasContainer.algo-race-mode .canvas-section {
-    flex: 1;
-    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#canvasContainer.algo-race-mode .canvas-section h3 {
+    font-size: 1rem;
+    margin-bottom: 8px;
+}
+
+#canvasContainer.algo-race-mode .canvas-section canvas {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+}
+
+.algo-race-controls {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.algo-grid-stats {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.algo-stat-item {
+    text-align: center;
+    padding: 10px;
+    background: #2a2a2a;
+    border-radius: 4px;
+}
+
+.algo-stat-item h4 {
+    margin: 0 0 8px 0;
+    color: #4CAF50;
+    font-size: 0.95rem;
+}
+
+.algo-stat-item .stat-box {
+    font-size: 0.85rem;
+    margin: 4px 0;
+}
+
+@media (max-width: 1400px) {
+    #canvasContainer.algo-race-mode {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+    }
+    
+    .algo-grid-stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    #canvasContainer.algo-race-mode {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(6, 1fr);
+    }
+    
+    .algo-grid-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (max-width: 1600px) {
