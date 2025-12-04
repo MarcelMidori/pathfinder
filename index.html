@@ -14,8 +14,8 @@
         <button class="secondary" onclick="resetProgress()">Reset Path</button>
         <button class="secondary" id="algoBtn" onclick="runDijkstraAnimation()">Visualize Dijkstra</button>
         <button class="secondary" id="raceBtn" onclick="toggleRaceMode()">Race Mode</button>
-        <div style="font-size: 0.85rem; color: #888; margin-left: auto;">
-            Shortcuts: <kbd>N</kbd> New Graph | <kbd>R</kbd> Reset | <kbd>D</kbd> Dijkstra
+        <div class="shortcuts-hint">
+            <kbd>N</kbd> New | <kbd>R</kbd> Reset | <kbd>D</kbd> Dijkstra
         </div>
     </div>
 
@@ -23,6 +23,15 @@
         <div class="stat-box">Target Distance: <span id="targetDist" class="val">?</span></div>
         <div class="stat-box">Your Distance: <span id="currentDist" class="val">0</span></div>
         <div class="stat-box">Status: <span id="statusMsg" style="color:#aaa">Select neighbors to move.</span></div>
+    </div>
+
+    <!-- Race result message -->
+    <div class="race-result" id="raceResult" style="display: none;">
+        <div class="race-result-content">
+            <h2 id="raceResultTitle"></h2>
+            <p id="raceResultMessage"></p>
+            <button class="new-race-btn" onclick="startNewRace()">New Race</button>
+        </div>
     </div>
 
     <!-- Race mode stats -->

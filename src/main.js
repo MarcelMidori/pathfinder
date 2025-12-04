@@ -48,6 +48,9 @@ let raceAlgoTimeEl = null;
 let raceCanvasSection = null;
 let canvasContainer = null;
 let startRaceBtn = null;
+let raceResultEl = null;
+let raceResultTitleEl = null;
+let raceResultMessageEl = null;
 
 // Race difficulty speeds (delay in milliseconds)
 const RACE_SPEEDS = {
@@ -77,6 +80,9 @@ export function init() {
         raceCanvasSection = document.getElementById('raceCanvasSection');
         canvasContainer = document.getElementById('canvasContainer');
         startRaceBtn = document.getElementById('startRaceBtn');
+        raceResultEl = document.getElementById('raceResult');
+        raceResultTitleEl = document.getElementById('raceResultTitle');
+        raceResultMessageEl = document.getElementById('raceResultMessage');
 
         if (!canvas) {
             throw new Error('Canvas element not found');
@@ -138,6 +144,7 @@ function setupEventListeners() {
     window.toggleRaceMode = toggleRaceMode;
     window.setRaceDifficulty = setRaceDifficulty;
     window.startRaceFromButton = startRaceFromButton;
+    window.startNewRace = startNewRace;
 }
 
 /**
@@ -188,7 +195,6 @@ function handleNodeClick(nodeId) {
         // Check if path is complete
         if (nodeId === graphData.endNode) {
             const userDistance = calculatePathWeight(userPath, graphData.nodes);
-            let message = "Path Complete! ";
             
             // Update race mode stats if active
             if (raceMode && raceStartTime) {
@@ -196,37 +202,33 @@ function handleNodeClick(nodeId) {
                 if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
                 if (raceUserTimeEl) raceUserTimeEl.textContent = userTime + 's';
 
-                // Compare with algorithm
+                // Check race result if algorithm is also complete
                 if (raceAlgoComplete && raceAlgoDistance !== null) {
-                    if (userDistance === raceAlgoDistance) {
-                        message += "Tie! Same distance as algorithm.";
-                        statusMsgEl.style.color = "#4CAF50";
-                    } else if (userDistance < raceAlgoDistance) {
-                        message += `You beat the algorithm! (${raceAlgoDistance - userDistance} units better)`;
+                    checkRaceResult();
+                } else {
+                    if (statusMsgEl) {
+                        statusMsgEl.innerText = "Waiting for algorithm to finish...";
+                        statusMsgEl.style.color = "#aaa";
+                    }
+                }
+            } else {
+                // Normal mode completion message
+                let message = "Path Complete! ";
+                if (optimalDistance !== null) {
+                    if (userDistance === optimalDistance) {
+                        message += "Perfect! You found the optimal path!";
                         statusMsgEl.style.color = "#4CAF50";
                     } else {
-                        message += `Algorithm was better by ${userDistance - raceAlgoDistance} units.`;
+                        const difference = userDistance - optimalDistance;
+                        message += `You were ${difference} unit${difference !== 1 ? 's' : ''} longer than optimal.`;
                         statusMsgEl.style.color = "#FF9800";
                     }
                 } else {
-                    message += "Waiting for algorithm...";
-                    statusMsgEl.style.color = "#aaa";
-                }
-            } else if (optimalDistance !== null) {
-                if (userDistance === optimalDistance) {
-                    message += "Perfect! You found the optimal path!";
+                    message += "Check your score.";
                     statusMsgEl.style.color = "#4CAF50";
-                } else {
-                    const difference = userDistance - optimalDistance;
-                    message += `You were ${difference} unit${difference !== 1 ? 's' : ''} longer than optimal.`;
-                    statusMsgEl.style.color = "#FF9800";
                 }
-            } else {
-                message += "Check your score.";
-                statusMsgEl.style.color = "#4CAF50";
+                if (statusMsgEl) statusMsgEl.innerText = message;
             }
-            
-            statusMsgEl.innerText = message;
         } else if (raceMode && raceStartTime) {
             // Update race stats in real-time
             const userDistance = calculatePathWeight(userPath, graphData.nodes);
@@ -447,6 +449,9 @@ async function startRace() {
         raceAnimationHighlight = null;
         raceAnimationVisited = [];
         renderRace(result.path);
+        
+        // Check if user has completed their path and show result
+        checkRaceResult();
     };
 
     // Run algorithm with visualization at selected speed
@@ -458,6 +463,89 @@ async function startRace() {
         onComplete,
         speed
     );
+}
+
+/**
+ * Check race result and show win/loss message
+ */
+function checkRaceResult() {
+    if (!raceMode || !raceStarted || !raceAlgoComplete) return;
+    
+    const userDistance = calculatePathWeight(userPath, graphData.nodes);
+    const userTime = raceStartTime ? ((Date.now() - raceStartTime) / 1000).toFixed(1) : '0.0';
+    
+    // Only show result if user has completed their path
+    if (userPath[userPath.length - 1] !== graphData.endNode) return;
+    
+    if (!raceResultEl || !raceResultTitleEl || !raceResultMessageEl) return;
+    
+    // Determine winner
+    let title = '';
+    let message = '';
+    let titleColor = '';
+    
+    if (userDistance < raceAlgoDistance) {
+        title = 'You Won! 🎉';
+        titleColor = '#4CAF50';
+        const difference = raceAlgoDistance - userDistance;
+        message = `Your path was ${difference} unit${difference !== 1 ? 's' : ''} shorter! (${userDistance} vs ${raceAlgoDistance})`;
+    } else if (userDistance === raceAlgoDistance) {
+        title = 'Tie! 🤝';
+        titleColor = '#FFD700';
+        message = `Both found the optimal path! (Distance: ${userDistance})`;
+    } else {
+        title = 'You Lost 😔';
+        titleColor = '#F44336';
+        const difference = userDistance - raceAlgoDistance;
+        message = `Algorithm found a shorter path by ${difference} unit${difference !== 1 ? 's' : ''}. (You: ${userDistance}, Algorithm: ${raceAlgoDistance})`;
+    }
+    
+    raceResultTitleEl.textContent = title;
+    raceResultTitleEl.style.color = titleColor;
+    raceResultMessageEl.textContent = message;
+    raceResultEl.style.display = 'block';
+}
+
+/**
+ * Start a new race
+ */
+function startNewRace() {
+    if (!raceMode) return;
+    
+    // Hide result
+    if (raceResultEl) {
+        raceResultEl.style.display = 'none';
+    }
+    
+    // Reset race state
+    raceStarted = false;
+    raceGraphData = null;
+    graphData = null;
+    userPath = [];
+    raceStartTime = null;
+    raceAlgoComplete = false;
+    raceAlgoDistance = null;
+    raceAlgoTime = null;
+    raceAnimationHighlight = null;
+    raceAnimationVisited = [];
+    
+    // Reset UI
+    if (raceUserDistEl) raceUserDistEl.textContent = '0';
+    if (raceUserTimeEl) raceUserTimeEl.textContent = '0.0s';
+    if (raceAlgoDistEl) raceAlgoDistEl.textContent = '?';
+    if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = '?';
+    if (startRaceBtn) {
+        startRaceBtn.disabled = false;
+        startRaceBtn.textContent = 'Start Race';
+    }
+    if (statusMsgEl) {
+        statusMsgEl.innerText = 'Select difficulty and click Start Race';
+        statusMsgEl.style.color = '#aaa';
+    }
+    
+    // Show black canvases
+    render();
+    renderRace();
 }
 
 /**
@@ -642,6 +730,12 @@ function updateUI() {
  * Render the graph
  */
 function render() {
+    // In race mode, show black canvas if race hasn't started
+    if (raceMode && (!raceStarted || !graphData)) {
+        if (renderer) renderer.clear();
+        return;
+    }
+    
     if (!graphData || !renderer) return;
 
     // Determine which nodes to highlight
