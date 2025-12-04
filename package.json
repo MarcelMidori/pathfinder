@@ -1,0 +1,16 @@
+{
+  "name": "pathfinder",
+  "version": "1.0.0",
+  "description": "Graph Theory Pathfinding Game",
+  "scripts": {
+    "dev": "live-server --port=8000 --open=/index.html --watch=src,index.html,styles.css",
+    "start": "./start-server.sh"
+  },
+  "keywords": ["graph", "pathfinding", "dijkstra", "game"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}
+

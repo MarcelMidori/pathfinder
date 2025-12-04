@@ -8,21 +8,41 @@ This project uses ES6 modules, which require a web server to run (due to CORS re
 
 ### Running the Game
 
-1. **Using Python (recommended):**
+#### Development Mode (with Hot Reload - Recommended)
+
+For instant updates when you change files:
+
+1. **Using the dev server script:**
+   ```bash
+   ./dev-server.sh
+   ```
+   This will automatically reload the page when you save changes to any file.
+
+2. **Using npm (if Node.js is installed):**
+   ```bash
+   npm install  # First time only
+   npm run dev
+   ```
+
+3. **Manual live-server:**
+   ```bash
+   npx live-server --port=8000 --open=/index.html --watch=src,index.html,styles.css
+   ```
+
+#### Production Mode (Simple Server)
+
+1. **Using Python:**
    ```bash
    python3 -m http.server 8000
    ```
    Then open `http://localhost:8000` in your browser.
 
-2. **Using Node.js (if installed):**
+2. **Using the start script:**
    ```bash
-   npx http-server -p 8000
+   ./start-server.sh
    ```
-   Then open `http://localhost:8000` in your browser.
 
-3. **Using any other web server:**
-   - Serve the project directory from any web server
-   - Open `index.html` through the server URL
+**Note:** For hot reload during development, use the dev server. The simple Python server doesn't auto-reload.
 
 ## Project Structure
 

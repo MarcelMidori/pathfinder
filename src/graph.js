@@ -11,7 +11,7 @@ export const MIN_START_END_DISTANCE_PERCENT = 0.3; // 30% of canvas diagonal
 export const MIN_NODE_DISTANCE = 60; // Minimum distance between nodes in pixels
 export const MAX_EDGES_PER_NODE = 5; // Maximum number of edges per node to reduce complexity
 export const MIN_EDGES_PER_NODE = 3; // Minimum number of edges per node
-export const WEIGHT_RANDOMNESS = 0.4; // Randomness factor for weights (0-1, higher = more random)
+export const WEIGHT_RANDOMNESS = 0.8; // Randomness factor for weights (0-1, higher = more random) - increased for less correlation
 
 /**
  * Convert numeric ID to letter label (0→A, 1→B, ... 25→Z, 26→AA, 27→AB, etc.)
@@ -61,19 +61,21 @@ export function calculateDistance(node1, node2) {
 }
 
 /**
- * Calculate edge weight from distance with randomness to decouple from visual distance
- * @param {number} distance - Euclidean distance in pixels
+ * Calculate edge weight from distance with high randomness to decouple from visual distance
+ * @param {number} distance - Euclidean distance in pixels (used minimally)
  * @param {number} randomness - Randomness factor (0-1, default: WEIGHT_RANDOMNESS)
  * @returns {number} Edge weight (1-9)
  */
 export function calculateWeight(distance, randomness = WEIGHT_RANDOMNESS) {
-    // Base weight from distance
+    // Use distance only as a very loose guide (20% influence)
     const baseWeight = Math.floor(distance / WEIGHT_DIVISOR);
+    const distanceInfluence = baseWeight * 0.2;
     
-    // Add randomness to decouple weight from visual distance
-    // Random factor ranges from -randomness to +randomness
-    const randomFactor = (Math.random() - 0.5) * 2 * randomness;
-    const adjustedWeight = baseWeight + randomFactor * 3; // Scale randomness
+    // Most of the weight comes from randomness (80% influence)
+    const randomWeight = Math.random() * 8 + 1; // Random between 1-9
+    
+    // Combine with weighted average heavily favoring randomness
+    const adjustedWeight = distanceInfluence + randomWeight * 0.8;
     
     // Clamp between 1 and 9
     return Math.min(9, Math.max(1, Math.round(adjustedWeight)));
@@ -135,8 +137,55 @@ export function generateNodes(count, canvasWidth, canvasHeight, padding = 50, mi
 }
 
 /**
+ * Check if two edges overlap or are too parallel
+ * @param {Node} n1a - First node of first edge
+ * @param {Node} n1b - Second node of first edge
+ * @param {Node} n2a - First node of second edge
+ * @param {Node} n2b - Second node of second edge
+ * @returns {boolean} True if edges overlap significantly
+ */
+function edgesOverlap(n1a, n1b, n2a, n2b) {
+    // Check if edges share a node (always allowed)
+    if (n1a === n2a || n1a === n2b || n1b === n2a || n1b === n2b) {
+        return false;
+    }
+    
+    // Calculate edge vectors
+    const dx1 = n1b.x - n1a.x;
+    const dy1 = n1b.y - n1a.y;
+    const dx2 = n2b.x - n2a.x;
+    const dy2 = n2b.y - n2a.y;
+    
+    // Calculate angle between edges
+    const dot = dx1 * dx2 + dy1 * dy2;
+    const mag1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+    const mag2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+    
+    if (mag1 === 0 || mag2 === 0) return false;
+    
+    const cosAngle = dot / (mag1 * mag2);
+    const angle = Math.acos(Math.max(-1, Math.min(1, cosAngle)));
+    
+    // Consider edges parallel if angle < 15 degrees or > 165 degrees
+    const parallelThreshold = Math.PI / 12; // 15 degrees
+    if (angle < parallelThreshold || angle > Math.PI - parallelThreshold) {
+        // Check if they're close enough to overlap
+        const dist1 = calculateDistance(n1a, n2a);
+        const dist2 = calculateDistance(n1a, n2b);
+        const dist3 = calculateDistance(n1b, n2a);
+        const dist4 = calculateDistance(n1b, n2b);
+        
+        const minDist = Math.min(dist1, dist2, dist3, dist4);
+        // If parallel edges are close (< 30px), consider them overlapping
+        return minDist < 30;
+    }
+    
+    return false;
+}
+
+/**
  * Connect nodes based on proximity (within connectivity radius)
- * Limits edges per node and ensures minimum edges per node
+ * Limits edges per node, ensures minimum edges, and avoids overlapping edges
  * @param {Node[]} nodes - Array of nodes to connect
  * @param {number} connectivityRadius - Maximum distance for edge creation
  * @param {number} maxEdgesPerNode - Maximum edges per node (default: MAX_EDGES_PER_NODE)
@@ -167,15 +216,30 @@ export function connectNodesByProximity(nodes, connectivityRadius, maxEdgesPerNo
     // Sort edges by distance (shorter edges first - prefer closer connections)
     potentialEdges.sort((a, b) => a.distance - b.distance);
 
-    // Phase 1: Add edges while respecting the max edges per node limit
+    // Phase 1: Add edges while respecting the max edges per node limit and avoiding overlaps
     for (const edge of potentialEdges) {
         // Check if both nodes can accept more edges
         if (edgeCounts[edge.from] < maxEdgesPerNode && edgeCounts[edge.to] < maxEdgesPerNode) {
-            edges.push({ from: edge.from, to: edge.to, weight: edge.weight });
-            nodes[edge.from].addNeighbor(edge.to, edge.weight);
-            nodes[edge.to].addNeighbor(edge.from, edge.weight);
-            edgeCounts[edge.from]++;
-            edgeCounts[edge.to]++;
+            // Check for overlapping/parallel edges
+            let hasOverlap = false;
+            for (const existingEdge of edges) {
+                if (edgesOverlap(
+                    nodes[edge.from], nodes[edge.to],
+                    nodes[existingEdge.from], nodes[existingEdge.to]
+                )) {
+                    hasOverlap = true;
+                    break;
+                }
+            }
+            
+            // Skip if overlapping, otherwise add edge
+            if (!hasOverlap) {
+                edges.push({ from: edge.from, to: edge.to, weight: edge.weight });
+                nodes[edge.from].addNeighbor(edge.to, edge.weight);
+                nodes[edge.to].addNeighbor(edge.from, edge.weight);
+                edgeCounts[edge.from]++;
+                edgeCounts[edge.to]++;
+            }
         }
     }
 
