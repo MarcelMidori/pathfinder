@@ -15,7 +15,9 @@ export const COLORS = {
     NODE_OPTIMAL_PATH: '#00FFFF', // Optimal path (Cyan)
     NODE_START: '#4CAF50',        // Start (Green)
     NODE_END: '#F44336',          // End (Red)
+    NODE_CLICKABLE: '#9C27B0',    // Clickable/adjacent nodes (Purple)
     NODE_STROKE: '#fff',
+    NODE_CLICKABLE_STROKE: '#E1BEE7', // Light purple stroke for clickable
     TEXT: '#fff'
 };
 
@@ -122,6 +124,7 @@ export class Renderer {
      * @param {Array} state.optimalPath - Array of node IDs in optimal path
      * @param {Array} state.visitedNodes - Array of visited node IDs
      * @param {Array} state.highlightNodes - Array of highlighted node IDs
+     * @param {Array} state.clickableNodes - Array of clickable node IDs (adjacent to current)
      * @param {Object} state.distances - Map of node ID to distance (for Dijkstra visualization)
      */
     drawNode(node, state = {}) {
@@ -133,10 +136,14 @@ export class Renderer {
             optimalPath = [],
             visitedNodes = [],
             highlightNodes = [],
+            clickableNodes = [],
             distances = {}
         } = state;
 
-        // Determine node color based on state (priority: start/end > optimal > highlight > visited > user path > default)
+        // Check if this node is clickable
+        const isClickable = clickableNodes.includes(node.id);
+
+        // Determine node color based on state (priority: start/end > optimal > highlight > visited > user path > clickable > default)
         let fillColor = COLORS.NODE_DEFAULT;
         
         if (node.id === startNode) {
@@ -151,6 +158,16 @@ export class Renderer {
             fillColor = COLORS.NODE_VISITED;
         } else if (userPath.includes(node.id)) {
             fillColor = COLORS.NODE_USER_PATH;
+        } else if (isClickable) {
+            fillColor = COLORS.NODE_CLICKABLE;
+        }
+
+        // Draw glow effect for clickable nodes
+        if (isClickable && !userPath.includes(node.id)) {
+            this.ctx.beginPath();
+            this.ctx.arc(node.x, node.y, NODE_RADIUS + 4, 0, Math.PI * 2);
+            this.ctx.fillStyle = 'rgba(156, 39, 176, 0.3)';
+            this.ctx.fill();
         }
 
         // Draw node circle
@@ -159,9 +176,9 @@ export class Renderer {
         this.ctx.fillStyle = fillColor;
         this.ctx.fill();
         
-        // Draw node stroke
-        this.ctx.strokeStyle = COLORS.NODE_STROKE;
-        this.ctx.lineWidth = NODE_STROKE_WIDTH;
+        // Draw node stroke (thicker for clickable nodes)
+        this.ctx.strokeStyle = isClickable && !userPath.includes(node.id) ? COLORS.NODE_CLICKABLE_STROKE : COLORS.NODE_STROKE;
+        this.ctx.lineWidth = isClickable && !userPath.includes(node.id) ? NODE_STROKE_WIDTH + 1 : NODE_STROKE_WIDTH;
         this.ctx.stroke();
 
         // Draw cost label (if available)
@@ -207,8 +224,9 @@ export class Renderer {
      * @param {Array} visitedNodes - Nodes visited by algorithm
      * @param {Array} optimalPath - Optimal path found by algorithm
      * @param {Object} distances - Map of node ID to distance (for Dijkstra visualization)
+     * @param {Array} clickableNodes - Nodes that can be clicked (adjacent to current)
      */
-    draw(graphData, userPath = [], highlightNodes = [], visitedNodes = [], optimalPath = [], userPathCosts = {}, distances = {}) {
+    draw(graphData, userPath = [], highlightNodes = [], visitedNodes = [], optimalPath = [], userPathCosts = {}, distances = {}, clickableNodes = []) {
         this.clear();
 
         const { nodes, edges, startNode, endNode } = graphData;
@@ -235,6 +253,7 @@ export class Renderer {
             optimalPath,
             visitedNodes,
             highlightNodes,
+            clickableNodes,
             distances
         };
         this.drawNodes(nodes, state);

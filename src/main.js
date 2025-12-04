@@ -455,7 +455,9 @@ function renderRaceUser() {
         return;
     }
     
-    raceUserRenderer.draw(raceGraphData, userPath, [], [], [], userPathCosts, {});
+    // Get clickable nodes for race mode
+    const clickableNodes = getClickableNodes(raceGraphData, userPath);
+    raceUserRenderer.draw(raceGraphData, userPath, [], [], [], userPathCosts, {}, clickableNodes);
 }
 
 /**
@@ -873,6 +875,33 @@ function calculateUserPathCosts() {
 }
 
 /**
+ * Get clickable nodes (neighbors of current node that aren't already in path)
+ * @param {Object} data - Graph data
+ * @param {Array} path - Current user path
+ * @returns {Array} - Array of clickable node IDs
+ */
+function getClickableNodes(data, path) {
+    if (!data || path.length === 0) return [];
+    
+    const currentNodeId = path[path.length - 1];
+    const currentNode = data.nodes[currentNodeId];
+    
+    if (!currentNode) return [];
+    
+    // Get all neighbors that aren't already in the path (except allow going back one step)
+    const clickable = currentNode.neighbors
+        .map(n => n.id)
+        .filter(id => {
+            // Allow clicking the previous node (to go back)
+            if (path.length > 1 && id === path[path.length - 2]) return true;
+            // Don't allow clicking nodes already in path
+            return !path.includes(id);
+        });
+    
+    return clickable;
+}
+
+/**
  * Reset user path to start
  */
 function resetUserPath() {
@@ -984,6 +1013,9 @@ function render() {
         }
     }
 
+    // Get clickable nodes (neighbors of current node, not already in path)
+    const clickableNodes = getClickableNodes(graphData, userPath);
+
     renderer.draw(
         graphData,
         userPath,
@@ -991,7 +1023,8 @@ function render() {
         visitedNodes,
         pathToShow,
         userPathCosts,
-        distances
+        distances,
+        clickableNodes
     );
 }
 
