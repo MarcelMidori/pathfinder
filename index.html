@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pathfinder: Graph Theory Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <h1>Pathfinder: Graph Theory</h1>
+    
+    <div class="controls">
+        <button onclick="generateGraph()">New Graph</button>
+        <button class="secondary" onclick="resetProgress()">Reset Path</button>
+        <button class="secondary" id="algoBtn" onclick="runDijkstraAnimation()">Visualize Dijkstra</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat-box">Target Distance: <span id="targetDist" class="val">?</span></div>
+        <div class="stat-box">Your Distance: <span id="currentDist" class="val">0</span></div>
+        <div class="stat-box">Status: <span id="statusMsg" style="color:#aaa">Select neighbors to move.</span></div>
+    </div>
+
+    <br>
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
