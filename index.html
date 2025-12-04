@@ -13,6 +13,7 @@
         <button onclick="generateGraph()">New Graph</button>
         <button class="secondary" onclick="resetProgress()">Reset Path</button>
         <button class="secondary" id="algoBtn" onclick="runDijkstraAnimation()">Visualize Dijkstra</button>
+        <button class="secondary" id="raceBtn" onclick="toggleRaceMode()">Race Mode</button>
         <div style="font-size: 0.85rem; color: #888; margin-left: auto;">
             Shortcuts: <kbd>N</kbd> New Graph | <kbd>R</kbd> Reset | <kbd>D</kbd> Dijkstra
         </div>
@@ -24,8 +25,31 @@
         <div class="stat-box">Status: <span id="statusMsg" style="color:#aaa">Select neighbors to move.</span></div>
     </div>
 
+    <!-- Race mode stats -->
+    <div class="race-stats" id="raceStats" style="display: none;">
+        <div class="race-section">
+            <h3>You</h3>
+            <div class="stat-box">Distance: <span id="raceUserDist" class="val">0</span></div>
+            <div class="stat-box">Time: <span id="raceUserTime" class="val">0.0s</span></div>
+        </div>
+        <div class="race-section">
+            <h3>Algorithm</h3>
+            <div class="stat-box">Distance: <span id="raceAlgoDist" class="val">?</span></div>
+            <div class="stat-box">Time: <span id="raceAlgoTime" class="val">?</span></div>
+        </div>
+    </div>
+
     <br>
-    <canvas id="gameCanvas" width="800" height="500"></canvas>
+    <div id="canvasContainer">
+        <div class="canvas-section">
+            <h3 id="userCanvasLabel">Your Path</h3>
+            <canvas id="gameCanvas" width="800" height="500"></canvas>
+        </div>
+        <div class="canvas-section" id="raceCanvasSection" style="display: none;">
+            <h3>Algorithm</h3>
+            <canvas id="raceCanvas" width="800" height="500"></canvas>
+        </div>
+    </div>
 
     <script type="module" src="src/main.js"></script>
 </body>

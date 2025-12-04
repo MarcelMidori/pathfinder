@@ -10,6 +10,8 @@ export const WEIGHT_DIVISOR = 40; // Divide distance by this to get weight (adju
 export const MIN_START_END_DISTANCE_PERCENT = 0.3; // 30% of canvas diagonal
 export const MIN_NODE_DISTANCE = 60; // Minimum distance between nodes in pixels
 export const MAX_EDGES_PER_NODE = 5; // Maximum number of edges per node to reduce complexity
+export const MIN_EDGES_PER_NODE = 3; // Minimum number of edges per node
+export const WEIGHT_RANDOMNESS = 0.4; // Randomness factor for weights (0-1, higher = more random)
 
 /**
  * Convert numeric ID to letter label (0→A, 1→B, ... 25→Z, 26→AA, 27→AB, etc.)
@@ -59,13 +61,22 @@ export function calculateDistance(node1, node2) {
 }
 
 /**
- * Calculate edge weight from distance (clamped to single digits 1-9)
+ * Calculate edge weight from distance with randomness to decouple from visual distance
  * @param {number} distance - Euclidean distance in pixels
+ * @param {number} randomness - Randomness factor (0-1, default: WEIGHT_RANDOMNESS)
  * @returns {number} Edge weight (1-9)
  */
-export function calculateWeight(distance) {
-    const weight = Math.floor(distance / WEIGHT_DIVISOR);
-    return Math.min(9, Math.max(1, weight)); // Clamp between 1 and 9
+export function calculateWeight(distance, randomness = WEIGHT_RANDOMNESS) {
+    // Base weight from distance
+    const baseWeight = Math.floor(distance / WEIGHT_DIVISOR);
+    
+    // Add randomness to decouple weight from visual distance
+    // Random factor ranges from -randomness to +randomness
+    const randomFactor = (Math.random() - 0.5) * 2 * randomness;
+    const adjustedWeight = baseWeight + randomFactor * 3; // Scale randomness
+    
+    // Clamp between 1 and 9
+    return Math.min(9, Math.max(1, Math.round(adjustedWeight)));
 }
 
 /**
@@ -125,13 +136,14 @@ export function generateNodes(count, canvasWidth, canvasHeight, padding = 50, mi
 
 /**
  * Connect nodes based on proximity (within connectivity radius)
- * Limits edges per node to reduce complexity
+ * Limits edges per node and ensures minimum edges per node
  * @param {Node[]} nodes - Array of nodes to connect
  * @param {number} connectivityRadius - Maximum distance for edge creation
  * @param {number} maxEdgesPerNode - Maximum edges per node (default: MAX_EDGES_PER_NODE)
+ * @param {number} minEdgesPerNode - Minimum edges per node (default: MIN_EDGES_PER_NODE)
  * @returns {Array} Array of edge objects {from, to, weight}
  */
-export function connectNodesByProximity(nodes, connectivityRadius, maxEdgesPerNode = MAX_EDGES_PER_NODE) {
+export function connectNodesByProximity(nodes, connectivityRadius, maxEdgesPerNode = MAX_EDGES_PER_NODE, minEdgesPerNode = MIN_EDGES_PER_NODE) {
     const edges = [];
     const edgeCounts = new Array(nodes.length).fill(0); // Track edges per node
 
@@ -155,7 +167,7 @@ export function connectNodesByProximity(nodes, connectivityRadius, maxEdgesPerNo
     // Sort edges by distance (shorter edges first - prefer closer connections)
     potentialEdges.sort((a, b) => a.distance - b.distance);
 
-    // Add edges while respecting the max edges per node limit
+    // Phase 1: Add edges while respecting the max edges per node limit
     for (const edge of potentialEdges) {
         // Check if both nodes can accept more edges
         if (edgeCounts[edge.from] < maxEdgesPerNode && edgeCounts[edge.to] < maxEdgesPerNode) {
@@ -164,6 +176,44 @@ export function connectNodesByProximity(nodes, connectivityRadius, maxEdgesPerNo
             nodes[edge.to].addNeighbor(edge.from, edge.weight);
             edgeCounts[edge.from]++;
             edgeCounts[edge.to]++;
+        }
+    }
+
+    // Phase 2: Ensure minimum edges per node
+    // Find nodes with fewer than minimum edges and add more connections
+    for (let i = 0; i < nodes.length; i++) {
+        while (edgeCounts[i] < minEdgesPerNode) {
+            // Find best candidate node to connect to
+            let bestCandidate = null;
+            let bestDistance = Infinity;
+            
+            for (let j = 0; j < nodes.length; j++) {
+                if (i === j) continue;
+                if (edgeCounts[j] >= maxEdgesPerNode) continue;
+                
+                // Check if already connected
+                const alreadyConnected = nodes[i].neighbors.some(n => n.id === j);
+                if (alreadyConnected) continue;
+                
+                const distance = calculateDistance(nodes[i], nodes[j]);
+                // Prefer nodes within connectivity radius, but allow slightly beyond if needed
+                if (distance < connectivityRadius * 1.5 && distance < bestDistance) {
+                    bestDistance = distance;
+                    bestCandidate = j;
+                }
+            }
+            
+            if (bestCandidate !== null) {
+                const weight = calculateWeight(bestDistance);
+                edges.push({ from: i, to: bestCandidate, weight });
+                nodes[i].addNeighbor(bestCandidate, weight);
+                nodes[bestCandidate].addNeighbor(i, weight);
+                edgeCounts[i]++;
+                edgeCounts[bestCandidate]++;
+            } else {
+                // No suitable candidate found, break to avoid infinite loop
+                break;
+            }
         }
     }
 

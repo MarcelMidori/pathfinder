@@ -9,11 +9,20 @@ import { dijkstraAnimated, calculatePathWeight } from './algorithms.js';
 
 // Game state
 let graphData = null;
+let raceGraphData = null; // Duplicate graph for race mode
 let userPath = [];
 let optimalPath = []; // Store optimal path from Dijkstra
 let optimalDistance = null; // Store optimal distance
 let isAnimating = false;
 let renderer = null;
+let raceRenderer = null; // Renderer for race mode canvas
+
+// Race mode state
+let raceMode = false;
+let raceStartTime = null;
+let raceAlgoComplete = false;
+let raceAlgoDistance = null;
+let raceAlgoTime = null;
 
 // Animation state
 let animationHighlight = null;
@@ -21,10 +30,19 @@ let animationVisited = [];
 
 // DOM elements
 let canvas = null;
+let raceCanvas = null;
 let algoBtn = null;
+let raceBtn = null;
 let targetDistEl = null;
 let currentDistEl = null;
 let statusMsgEl = null;
+let raceStatsEl = null;
+let raceUserDistEl = null;
+let raceUserTimeEl = null;
+let raceAlgoDistEl = null;
+let raceAlgoTimeEl = null;
+let raceCanvasSection = null;
+let canvasContainer = null;
 
 /**
  * Initialize the game
@@ -33,17 +51,29 @@ export function init() {
     try {
         // Get DOM elements
         canvas = document.getElementById('gameCanvas');
+        raceCanvas = document.getElementById('raceCanvas');
         algoBtn = document.getElementById('algoBtn');
+        raceBtn = document.getElementById('raceBtn');
         targetDistEl = document.getElementById('targetDist');
         currentDistEl = document.getElementById('currentDist');
         statusMsgEl = document.getElementById('statusMsg');
+        raceStatsEl = document.getElementById('raceStats');
+        raceUserDistEl = document.getElementById('raceUserDist');
+        raceUserTimeEl = document.getElementById('raceUserTime');
+        raceAlgoDistEl = document.getElementById('raceAlgoDist');
+        raceAlgoTimeEl = document.getElementById('raceAlgoTime');
+        raceCanvasSection = document.getElementById('raceCanvasSection');
+        canvasContainer = document.getElementById('canvasContainer');
 
         if (!canvas) {
             throw new Error('Canvas element not found');
         }
 
-        // Initialize renderer
+        // Initialize renderers
         renderer = new Renderer(canvas);
+        if (raceCanvas) {
+            raceRenderer = new Renderer(raceCanvas);
+        }
 
         // Set up event listeners
         setupEventListeners();
@@ -92,6 +122,7 @@ function setupEventListeners() {
     window.generateGraph = generateNewGraph;
     window.resetProgress = resetUserPath;
     window.runDijkstraAnimation = runDijkstraVisualization;
+    window.toggleRaceMode = toggleRaceMode;
 }
 
 /**
@@ -99,6 +130,9 @@ function setupEventListeners() {
  */
 function handleCanvasClick(e) {
     if (isAnimating || !graphData) return;
+    
+    // Only handle clicks on the user canvas, not race canvas
+    if (e.target !== canvas) return;
 
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
@@ -141,7 +175,29 @@ function handleNodeClick(nodeId) {
             const userDistance = calculatePathWeight(userPath, graphData.nodes);
             let message = "Path Complete! ";
             
-            if (optimalDistance !== null) {
+            // Update race mode stats if active
+            if (raceMode && raceStartTime) {
+                const userTime = ((Date.now() - raceStartTime) / 1000).toFixed(1);
+                if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
+                if (raceUserTimeEl) raceUserTimeEl.textContent = userTime + 's';
+
+                // Compare with algorithm
+                if (raceAlgoComplete && raceAlgoDistance !== null) {
+                    if (userDistance === raceAlgoDistance) {
+                        message += "Tie! Same distance as algorithm.";
+                        statusMsgEl.style.color = "#4CAF50";
+                    } else if (userDistance < raceAlgoDistance) {
+                        message += `You beat the algorithm! (${raceAlgoDistance - userDistance} units better)`;
+                        statusMsgEl.style.color = "#4CAF50";
+                    } else {
+                        message += `Algorithm was better by ${userDistance - raceAlgoDistance} units.`;
+                        statusMsgEl.style.color = "#FF9800";
+                    }
+                } else {
+                    message += "Waiting for algorithm...";
+                    statusMsgEl.style.color = "#aaa";
+                }
+            } else if (optimalDistance !== null) {
                 if (userDistance === optimalDistance) {
                     message += "Perfect! You found the optimal path!";
                     statusMsgEl.style.color = "#4CAF50";
@@ -156,8 +212,158 @@ function handleNodeClick(nodeId) {
             }
             
             statusMsgEl.innerText = message;
+        } else if (raceMode && raceStartTime) {
+            // Update race stats in real-time
+            const userDistance = calculatePathWeight(userPath, graphData.nodes);
+            const userTime = ((Date.now() - raceStartTime) / 1000).toFixed(1);
+            if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
+            if (raceUserTimeEl) raceUserTimeEl.textContent = userTime + 's';
         }
     }
+}
+
+/**
+ * Deep clone graph data for race mode
+ */
+function cloneGraphData(graphData) {
+    // Clone nodes
+    const clonedNodes = graphData.nodes.map(node => {
+        const clonedNode = {
+            id: node.id,
+            label: node.label,
+            x: node.x,
+            y: node.y,
+            neighbors: node.neighbors.map(n => ({ id: n.id, weight: n.weight }))
+        };
+        return clonedNode;
+    });
+
+    // Clone edges
+    const clonedEdges = graphData.edges.map(edge => ({
+        from: edge.from,
+        to: edge.to,
+        weight: edge.weight
+    }));
+
+    return {
+        nodes: clonedNodes,
+        edges: clonedEdges,
+        startNode: graphData.startNode,
+        endNode: graphData.endNode
+    };
+}
+
+/**
+ * Toggle race mode on/off
+ */
+function toggleRaceMode() {
+    raceMode = !raceMode;
+
+    if (raceMode) {
+        // Enable race mode
+        if (raceCanvasSection) {
+            raceCanvasSection.style.display = 'block';
+        }
+        if (raceStatsEl) {
+            raceStatsEl.style.display = 'flex';
+        }
+        if (canvasContainer) {
+            canvasContainer.classList.add('race-mode');
+        }
+        if (raceBtn) {
+            raceBtn.textContent = 'Exit Race Mode';
+            raceBtn.style.background = '#F44336';
+        }
+
+        // Clone graph for race mode
+        if (graphData) {
+            raceGraphData = cloneGraphData(graphData);
+            startRace();
+        }
+    } else {
+        // Disable race mode
+        if (raceCanvasSection) {
+            raceCanvasSection.style.display = 'none';
+        }
+        if (raceStatsEl) {
+            raceStatsEl.style.display = 'none';
+        }
+        if (canvasContainer) {
+            canvasContainer.classList.remove('race-mode');
+        }
+        if (raceBtn) {
+            raceBtn.textContent = 'Race Mode';
+            raceBtn.style.background = '#2196F3';
+        }
+
+        raceGraphData = null;
+        raceStartTime = null;
+        raceAlgoComplete = false;
+    }
+
+    render();
+    if (raceMode && raceRenderer) {
+        renderRace();
+    }
+}
+
+/**
+ * Start race mode - run algorithm automatically
+ */
+async function startRace() {
+    if (!raceMode || !raceGraphData) return;
+
+    raceStartTime = Date.now();
+    raceAlgoComplete = false;
+    raceAlgoDistance = null;
+    raceAlgoTime = null;
+
+    // Reset race UI
+    if (raceUserDistEl) raceUserDistEl.textContent = '0';
+    if (raceUserTimeEl) raceUserTimeEl.textContent = '0.0s';
+    if (raceAlgoDistEl) raceAlgoDistEl.textContent = '?';
+    if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = '?';
+
+    // Run Dijkstra on race canvas
+    const raceAnimationVisited = [];
+    let raceCurrentHighlight = null;
+
+    const onStep = (currentNode, visited, distances) => {
+        raceCurrentHighlight = currentNode;
+        raceAnimationVisited.push(...visited.filter(v => !raceAnimationVisited.includes(v)));
+        renderRace();
+    };
+
+    const onComplete = (result) => {
+        const endTime = Date.now();
+        raceAlgoComplete = true;
+        raceAlgoDistance = result.distance;
+        raceAlgoTime = ((endTime - raceStartTime) / 1000).toFixed(1);
+
+        if (raceAlgoDistEl) raceAlgoDistEl.textContent = result.distance || '?';
+        if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = raceAlgoTime + 's';
+
+        // Show optimal path on race canvas
+        renderRace(result.path);
+    };
+
+    // Run algorithm without animation delay for race mode
+    await dijkstraAnimated(
+        raceGraphData.nodes,
+        raceGraphData.startNode,
+        raceGraphData.endNode,
+        onStep,
+        onComplete,
+        50 // Fast animation for race mode
+    );
+}
+
+/**
+ * Render race canvas
+ */
+function renderRace(optimalPath = null) {
+    if (!raceMode || !raceGraphData || !raceRenderer) return;
+    raceRenderer.draw(raceGraphData, [], [], [], optimalPath || []);
 }
 
 /**
@@ -188,6 +394,12 @@ function generateNewGraph() {
 
     if (targetDistEl) {
         targetDistEl.textContent = "?";
+    }
+
+    // If race mode is active, clone graph and restart race
+    if (raceMode) {
+        raceGraphData = cloneGraphData(graphData);
+        startRace();
     }
 
     updateUI();
@@ -283,12 +495,23 @@ function updateUI() {
 
     // Calculate user path distance
     const userDistance = calculatePathWeight(userPath, graphData.nodes);
-    currentDistEl.textContent = userDistance;
+    if (currentDistEl) {
+        currentDistEl.textContent = userDistance;
+    }
+
+    // Update race mode stats if active
+    if (raceMode && raceStartTime) {
+        const userTime = ((Date.now() - raceStartTime) / 1000).toFixed(1);
+        if (raceUserDistEl) raceUserDistEl.textContent = userDistance;
+        if (raceUserTimeEl) raceUserTimeEl.textContent = userTime + 's';
+    }
 
     // Reset status message if path is incomplete
     if (userPath[userPath.length - 1] !== graphData.endNode) {
-        statusMsgEl.innerText = "Select neighbors to move.";
-        statusMsgEl.style.color = "#aaa";
+        if (statusMsgEl) {
+            statusMsgEl.innerText = raceMode ? "Race in progress! Find the shortest path." : "Select neighbors to move.";
+            statusMsgEl.style.color = "#aaa";
+        }
     }
 }
 
