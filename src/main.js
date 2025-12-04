@@ -593,6 +593,8 @@ function startNewRace() {
     raceAlgoTime = null;
     raceAnimationHighlight = null;
     raceAnimationVisited = [];
+    raceAnimationDistances = {};
+    raceFinalDistances = {};
     
     // Reset UI
     if (raceUserDistEl) raceUserDistEl.textContent = '0';
