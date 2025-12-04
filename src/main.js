@@ -6,11 +6,17 @@
 import { generateGraph, DEFAULT_NODE_COUNT, DEFAULT_CONNECTIVITY_RADIUS } from './graph.js';
 import { Renderer } from './renderer.js';
 import { 
+    dijkstra,
     dijkstraAnimated, 
+    aStar,
     aStarAnimated,
+    bfs,
     bfsAnimated,
+    dfs,
     dfsAnimated,
+    greedyBestFirst,
     greedyBestFirstAnimated,
+    uniformCostSearch,
     uniformCostSearchAnimated,
     calculatePathWeight 
 } from './algorithms.js';
@@ -215,6 +221,7 @@ function setupEventListeners() {
     window.setRaceAlgorithm = setRaceAlgorithm;
     window.startRaceFromButton = startRaceFromButton;
     window.startAlgorithmRaceFromButton = startAlgorithmRaceFromButton;
+    window.runSimulation = runSimulation;
 }
 
 /**
@@ -1306,4 +1313,134 @@ function renderAlgorithmRace() {
             renderer.draw(algoRaceGraphData, [], highlightNodes, algoState.visited, [], {}, algoState.distances);
         }
     });
+}
+
+/**
+ * Run 100 race simulations and display statistics
+ */
+async function runSimulation() {
+    if (activeTab !== 'compare') return;
+    
+    const simulateBtn = document.getElementById('simulateBtn');
+    const simStats = document.getElementById('simulationStats');
+    const simProgress = document.getElementById('simProgress');
+    const simTableBody = document.getElementById('simTableBody');
+    
+    if (!simStats || !simProgress || !simTableBody) return;
+    
+    // Disable button during simulation
+    if (simulateBtn) {
+        simulateBtn.disabled = true;
+        simulateBtn.textContent = 'Simulating...';
+    }
+    
+    // Show stats section
+    simStats.style.display = 'block';
+    simProgress.textContent = 'Running simulations: 0/100';
+    simTableBody.innerHTML = '';
+    
+    // Algorithm configurations
+    const algorithms = [
+        { name: 'Dijkstra', key: 'dijkstra', fn: dijkstra },
+        { name: 'A*', key: 'astar', fn: aStar },
+        { name: 'BFS', key: 'bfs', fn: bfs },
+        { name: 'DFS', key: 'dfs', fn: dfs },
+        { name: 'Greedy', key: 'greedy', fn: greedyBestFirst },
+        { name: 'UCS', key: 'ucs', fn: uniformCostSearch }
+    ];
+    
+    // Statistics storage
+    const stats = {};
+    algorithms.forEach(algo => {
+        stats[algo.key] = {
+            name: algo.name,
+            optimalCount: 0,
+            totalTime: 0,
+            totalNodes: 0,
+            runs: 0
+        };
+    });
+    
+    const NUM_SIMULATIONS = 100;
+    
+    // Run simulations
+    for (let i = 0; i < NUM_SIMULATIONS; i++) {
+        // Generate a new graph for this simulation
+        const simGraph = generateGraph({
+            nodeCount: DEFAULT_NODE_COUNT,
+            connectivityRadius: DEFAULT_CONNECTIVITY_RADIUS,
+            canvasWidth: 400,
+            canvasHeight: 300
+        });
+        
+        // Run Dijkstra first to get optimal distance
+        const dijkstraResult = dijkstra(simGraph.nodes, simGraph.startNode, simGraph.endNode);
+        const optimalDistance = dijkstraResult.distance;
+        
+        // Run all algorithms and collect stats
+        for (const algo of algorithms) {
+            const startTime = performance.now();
+            const result = algo.fn(simGraph.nodes, simGraph.startNode, simGraph.endNode);
+            const endTime = performance.now();
+            
+            stats[algo.key].runs++;
+            stats[algo.key].totalTime += (endTime - startTime);
+            stats[algo.key].totalNodes += result.visitedNodes ? result.visitedNodes.length : 0;
+            
+            // Check if found optimal path
+            if (result.distance !== null && result.distance === optimalDistance) {
+                stats[algo.key].optimalCount++;
+            }
+        }
+        
+        // Update progress every 10 simulations
+        if ((i + 1) % 10 === 0 || i === NUM_SIMULATIONS - 1) {
+            simProgress.textContent = `Running simulations: ${i + 1}/${NUM_SIMULATIONS}`;
+            // Allow UI to update
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    }
+    
+    // Calculate and display results
+    simProgress.textContent = 'Simulation complete!';
+    
+    // Find fastest algorithm for highlighting
+    let fastestTime = Infinity;
+    Object.values(stats).forEach(s => {
+        const avgTime = s.totalTime / s.runs;
+        if (avgTime < fastestTime) fastestTime = avgTime;
+    });
+    
+    // Build results table
+    let tableHTML = '';
+    algorithms.forEach(algo => {
+        const s = stats[algo.key];
+        const accuracy = ((s.optimalCount / s.runs) * 100).toFixed(1);
+        const avgTime = (s.totalTime / s.runs).toFixed(3);
+        const avgNodes = (s.totalNodes / s.runs).toFixed(1);
+        const isFastest = (s.totalTime / s.runs) === fastestTime;
+        
+        // Determine accuracy class
+        let accuracyClass = 'accuracy-poor';
+        if (accuracy >= 100) accuracyClass = 'accuracy-optimal';
+        else if (accuracy >= 90) accuracyClass = 'accuracy-good';
+        else if (accuracy >= 70) accuracyClass = 'accuracy-medium';
+        
+        tableHTML += `
+            <tr>
+                <td>${s.name}</td>
+                <td class="${accuracyClass}">${accuracy}%</td>
+                <td class="${isFastest ? 'fastest' : ''}">${avgTime}ms</td>
+                <td>${avgNodes}</td>
+            </tr>
+        `;
+    });
+    
+    simTableBody.innerHTML = tableHTML;
+    
+    // Re-enable button
+    if (simulateBtn) {
+        simulateBtn.disabled = false;
+        simulateBtn.textContent = 'Simulate 100 Races';
+    }
 }

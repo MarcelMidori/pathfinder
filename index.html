@@ -93,10 +93,29 @@
         <div class="race-stats">
             <div class="algo-race-controls">
                 <button id="startAlgoRaceBtn" class="start-race-btn" onclick="startAlgorithmRaceFromButton()">Start Race</button>
+                <button id="simulateBtn" class="start-race-btn simulate-btn" onclick="runSimulation()">Simulate 100 Races</button>
                 <div class="race-section" id="algoRaceResultSection" style="display: none;">
                     <h3 id="algoRaceResultTitle"></h3>
                     <p id="algoRaceResultMessage" style="margin: 8px 0; color: #eee; font-size: 0.9rem;"></p>
                 </div>
+            </div>
+            
+            <!-- Simulation Statistics -->
+            <div id="simulationStats" class="simulation-stats" style="display: none;">
+                <h3>Simulation Results (100 Races)</h3>
+                <div class="sim-progress" id="simProgress"></div>
+                <table class="sim-table">
+                    <thead>
+                        <tr>
+                            <th>Algorithm</th>
+                            <th>Accuracy</th>
+                            <th>Avg Time</th>
+                            <th>Avg Nodes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="simTableBody">
+                    </tbody>
+                </table>
             </div>
             <div class="algo-grid-stats">
                 <div class="algo-stat-item">
