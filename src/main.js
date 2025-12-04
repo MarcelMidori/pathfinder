@@ -1404,11 +1404,11 @@ async function runSimulation() {
     // Calculate and display results
     simProgress.textContent = 'Simulation complete!';
     
-    // Find fastest algorithm for highlighting
-    let fastestTime = Infinity;
+    // Find most efficient algorithm (fewest nodes - this is "visual speed")
+    let fewestNodes = Infinity;
     Object.values(stats).forEach(s => {
-        const avgTime = s.totalTime / s.runs;
-        if (avgTime < fastestTime) fastestTime = avgTime;
+        const avgNodes = s.totalNodes / s.runs;
+        if (avgNodes < fewestNodes) fewestNodes = avgNodes;
     });
     
     // Build results table
@@ -1418,7 +1418,7 @@ async function runSimulation() {
         const accuracy = ((s.optimalCount / s.runs) * 100).toFixed(1);
         const avgTime = (s.totalTime / s.runs).toFixed(3);
         const avgNodes = (s.totalNodes / s.runs).toFixed(1);
-        const isFastest = (s.totalTime / s.runs) === fastestTime;
+        const isMostEfficient = Math.abs((s.totalNodes / s.runs) - fewestNodes) < 0.1;
         
         // Determine accuracy class
         let accuracyClass = 'accuracy-poor';
@@ -1430,8 +1430,8 @@ async function runSimulation() {
             <tr>
                 <td>${s.name}</td>
                 <td class="${accuracyClass}">${accuracy}%</td>
-                <td class="${isFastest ? 'fastest' : ''}">${avgTime}ms</td>
-                <td>${avgNodes}</td>
+                <td>${avgTime}ms</td>
+                <td class="${isMostEfficient ? 'fastest' : ''}">${avgNodes}</td>
             </tr>
         `;
     });
