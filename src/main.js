@@ -302,10 +302,35 @@ function toggleRaceMode() {
             }
         });
 
-        // Clone graph for race mode
-        if (graphData) {
-            raceGraphData = cloneGraphData(graphData);
-            startRace();
+        // Reset race state - don't start automatically
+        raceStarted = false;
+        raceGraphData = null;
+        graphData = null; // Clear graph data so both canvases are black
+        raceStartTime = null;
+        raceAlgoComplete = false;
+        raceAlgoDistance = null;
+        raceAlgoTime = null;
+        raceAnimationHighlight = null;
+        raceAnimationVisited = [];
+        userPath = [];
+
+        // Reset UI
+        if (raceUserDistEl) raceUserDistEl.textContent = '0';
+        if (raceUserTimeEl) raceUserTimeEl.textContent = '0.0s';
+        if (raceAlgoDistEl) raceAlgoDistEl.textContent = '?';
+        if (raceAlgoTimeEl) raceAlgoTimeEl.textContent = '?';
+        if (startRaceBtn) {
+            startRaceBtn.disabled = false;
+            startRaceBtn.textContent = 'Start Race';
+        }
+        if (raceResultSection) {
+            raceResultSection.style.display = 'none';
+        }
+
+        // Show black canvas (no graph yet) on both canvases
+        render();
+        if (raceRenderer) {
+            renderRace();
         }
     } else {
         // Disable race mode
