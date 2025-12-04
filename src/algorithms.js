@@ -15,6 +15,11 @@ function euclideanDistance(node1, node2) {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
+// Heuristic scale factor for A*
+// Since edge weights are randomized (1-9) and not proportional to distance,
+// we scale down the heuristic to ensure it never overestimates (admissibility)
+const HEURISTIC_SCALE = 0.01;
+
 /**
  * Calculate the total weight of a path
  * @param {Array} path - Array of node IDs representing the path
@@ -249,7 +254,7 @@ export function aStar(nodes, startNode, endNode) {
     
     gScore[startNode] = 0;
     const startNodeObj = nodes.find(n => n.id === startNode);
-    fScore[startNode] = euclideanDistance(startNodeObj, endNodeObj);
+    fScore[startNode] = euclideanDistance(startNodeObj, endNodeObj) * HEURISTIC_SCALE;
     
     while (openSet.size > 0) {
         // Find node in openSet with lowest fScore
@@ -295,7 +300,7 @@ export function aStar(nodes, startNode, endNode) {
             parent[neighbor.id] = minNode;
             gScore[neighbor.id] = tentativeGScore;
             const neighborNode = nodes[neighbor.id];
-            fScore[neighbor.id] = gScore[neighbor.id] + euclideanDistance(neighborNode, endNodeObj);
+            fScore[neighbor.id] = gScore[neighbor.id] + euclideanDistance(neighborNode, endNodeObj) * HEURISTIC_SCALE;
         }
     }
     
@@ -330,7 +335,7 @@ export async function aStarAnimated(nodes, startNode, endNode, onStep, onComplet
     gScore[startNode] = 0;
     distances[startNode] = 0;
     const startNodeObj = nodes.find(n => n.id === startNode);
-    fScore[startNode] = euclideanDistance(startNodeObj, endNodeObj);
+    fScore[startNode] = euclideanDistance(startNodeObj, endNodeObj) * HEURISTIC_SCALE;
     
     while (openSet.size > 0) {
         let minNode = null;
@@ -381,7 +386,7 @@ export async function aStarAnimated(nodes, startNode, endNode, onStep, onComplet
             gScore[neighbor.id] = tentativeGScore;
             distances[neighbor.id] = tentativeGScore;
             const neighborNode = nodes[neighbor.id];
-            fScore[neighbor.id] = gScore[neighbor.id] + euclideanDistance(neighborNode, endNodeObj);
+            fScore[neighbor.id] = gScore[neighbor.id] + euclideanDistance(neighborNode, endNodeObj) * HEURISTIC_SCALE;
         }
     }
     
